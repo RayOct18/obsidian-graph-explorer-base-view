@@ -19,6 +19,7 @@ nav_order: 2
 | Action            | Effect                                                                          |
 | ----------------- | ------------------------------------------------------------------------------- |
 | Click node        | Select node, open side panel                                                    |
+| Ctrl/Cmd + hover  | Page preview of the note (also: hover, then press Ctrl/Cmd)                     |
 | Double-click node | Open note in a new tab                                                          |
 | Right-click node  | Context menu (open, explored toggle, set maturity, copy wikilink, batch select) |
 | Drag node         | Reposition it in the graph (position is saved and restored on reopen)           |

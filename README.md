@@ -31,6 +31,7 @@ Where Obsidian's built-in graph shows the whole vault, Graph Explorer works on t
 - Header badges surface key metadata (external, frontier, wiki role, confidence, graduated count, tags).
 - Toggle explored, change maturity level and copy the note as markdown directly from the panel.
 - Edit the note in place with Obsidian's own editor (✎ Edit / 👁 Preview toggle).
+- Ctrl/Cmd + hover a node for Obsidian's page preview (toggle the Ctrl requirement under Settings → Page preview → Graph Explorer).
 - Selecting a note reveals its linked notes that the Base filter excludes (e.g. finished tasks), so you can see the full context of one note without widening the filter.
 - Internal links navigate in-panel when the target is in the graph, or open in a new tab otherwise.
 
