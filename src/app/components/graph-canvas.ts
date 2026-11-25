@@ -10,6 +10,9 @@ import type {
 } from '../types/graph-types'
 import { clampNodeSpacing } from '../types/graph-types'
 import { carryOverPositions } from '../utils/layout-carry-over'
+import type { CameraState } from '../utils/view-state'
+import type { CardSize, ExpandedCards } from '../utils/expanded-cards'
+import { createCardAvoidForce } from '../services/card-avoid-force'
 
 export interface GraphCanvasCallbacks {
     onNodeClick: (node: GraphNode) => void
@@ -20,6 +23,10 @@ export interface GraphCanvasCallbacks {
     onNodeDragEnd: (nodeId: string, x: number, y: number) => void
     /** Pointer entered (node) or left (null) a node; event is the latest pointer event */
     onNodeHover?: (node: GraphNode | null, event: MouseEvent | null) => void
+    /** Zoom or pan finished (after the first-load camera has been applied) */
+    onCameraChange?: (camera: CameraState) => void
+    /** After every rendered frame (used to keep card overlays on their nodes) */
+    onFrame?: () => void
 }
 
 /** Categorical color palette for generic property visualization */
@@ -73,6 +80,7 @@ export class GraphCanvas extends Component {
     private searchMatchIds: Set<string> = new Set()
     private batchSelectedIds: Set<string> = new Set()
     private zoomTimer: number | null = null
+    // Node under the last click, for the native dblclick (event.timeStamp clock)
     private lastClickTime = 0
     private lastClickNodeId: string | null = null
 
@@ -99,6 +107,12 @@ export class GraphCanvas extends Component {
     private nodeScale = 100
     private textScale = 100
     private initialZoomDone = false
+    /** Camera to restore on first load instead of zoom-to-fit */
+    private initialCamera: CameraState | null = null
+    /** False until the first-load camera is applied, so that default view is not saved */
+    private cameraReady = false
+    /** Expanded cards, sized in graph units; other nodes are kept out of them */
+    private cardSizes: ExpandedCards = {}
     private propertyColorMap: Map<string, string> = new Map()
     private sizeMin = 0
     private sizeMax = 1
@@ -121,6 +135,7 @@ export class GraphCanvas extends Component {
         this.registerDomEvent(this.canvasContainerEl, 'mousemove', (e) => {
             this.lastPointerEvent = e
         })
+        this.registerDomEvent(this.canvasContainerEl, 'dblclick', (e) => this.handleDoubleClick(e))
     }
 
     /** Latest pointer event over the canvas, used to position hover previews */
@@ -175,14 +190,18 @@ export class GraphCanvas extends Component {
                 (link: GraphLink, ctx: CanvasRenderingContext2D, globalScale: number) =>
                     this.paintLink(link, ctx, globalScale)
             )
-            .onNodeClick((node: GraphNode) => this.handleNodeClick(node))
+            .onNodeClick((node: GraphNode, event: MouseEvent) => this.handleNodeClick(node, event))
             .onNodeHover((node: GraphNode | null) => this.handleNodeHover(node))
+            .onZoomEnd(() => this.emitCameraChange())
+            .onRenderFramePost(() => this.callbacks.onFrame?.())
             .onNodeRightClick((node: GraphNode, event: MouseEvent) => {
                 event.preventDefault()
                 this.callbacks.onNodeRightClick(node, event)
             })
             .onBackgroundClick((event: MouseEvent) => {
-                if (event.detail <= 1) {
+                // The node may have moved away between the two clicks of a
+                // double-click; that second click must not deselect it
+                if (event.detail <= 1 && !this.isSecondClick(event)) {
                     this.callbacks.onBackgroundClick()
                 }
             })
@@ -273,6 +292,45 @@ export class GraphCanvas extends Component {
         link?.distance(Math.round(this.nodeSpacing * 0.5))
         const center = this.graph.d3Force('center') as CenterForce | undefined
         center?.strength(0.03)
+        if (!this.graph.d3Force('cardAvoid')) {
+            const avoid = createCardAvoidForce((id): CardSize | null => this.cardSizes[id] ?? null)
+            this.graph.d3Force(
+                'cardAvoid',
+                avoid as unknown as Parameters<typeof this.graph.d3Force>[1]
+            )
+        }
+    }
+
+    // ── Expanded cards ────────────────────────────────────────
+
+    /** Sets the expanded cards; nodes are pushed out of them, so the layout reheats on change. */
+    setExpandedCards(cards: ExpandedCards): void {
+        const before = JSON.stringify(this.cardSizes)
+        this.cardSizes = { ...cards }
+        if (before !== JSON.stringify(this.cardSizes)) this.graph?.d3ReheatSimulation()
+    }
+
+    getNode(id: string): GraphNode | null {
+        return this.nodeMap.get(id) ?? null
+    }
+
+    toScreen(x: number, y: number): { x: number; y: number } | null {
+        return this.graph ? this.graph.graph2ScreenCoords(x, y) : null
+    }
+
+    getZoom(): number {
+        return this.graph?.zoom() ?? 1
+    }
+
+    /** Pins a node at graph coordinates (card header drag) and lets neighbors react. */
+    moveNode(id: string, x: number, y: number): void {
+        const node = this.nodeMap.get(id)
+        if (!node) return
+        node.x = x
+        node.y = y
+        node.fx = x
+        node.fy = y
+        this.graph?.d3ReheatSimulation()
     }
 
     private setupResizeObserver(): void {
@@ -381,9 +439,27 @@ export class GraphCanvas extends Component {
             this.initialZoomDone = true
             if (this.zoomTimer) window.clearTimeout(this.zoomTimer)
             this.zoomTimer = window.setTimeout(() => {
-                this.graph?.zoomToFit(400, 40)
+                const camera = this.initialCamera
+                if (camera) {
+                    this.graph?.zoom(camera.k, 0)
+                    this.graph?.centerAt(camera.x, camera.y, 0)
+                } else {
+                    this.graph?.zoomToFit(400, 40)
+                }
+                this.cameraReady = true
             }, 800)
         }
+    }
+
+    /** Sets the camera restored on first load (null = zoom to fit). */
+    setInitialCamera(camera: CameraState | null): void {
+        this.initialCamera = camera
+    }
+
+    private emitCameraChange(): void {
+        if (!this.graph || !this.cameraReady) return
+        const center = this.graph.centerAt()
+        this.callbacks.onCameraChange?.({ k: this.graph.zoom(), x: center.x, y: center.y })
     }
 
     // ── Selection ─────────────────────────────────────────────
@@ -553,17 +629,34 @@ export class GraphCanvas extends Component {
 
     // ── Event handlers ────────────────────────────────────────
 
-    private handleNodeClick(node: GraphNode): void {
-        const now = Date.now()
-        if (this.lastClickNodeId === node.id && now - this.lastClickTime < 400) {
-            this.callbacks.onNodeDoubleClick(node)
-            this.lastClickTime = 0
-            this.lastClickNodeId = null
-        } else {
-            this.lastClickTime = now
-            this.lastClickNodeId = node.id
-            this.callbacks.onNodeClick(node)
-        }
+    /** A click this soon after a node click is the second half of a double-click */
+    private isSecondClick(event: MouseEvent): boolean {
+        return this.lastClickNodeId != null && event.timeStamp - this.lastClickTime < 500
+    }
+
+    private handleNodeClick(node: GraphNode, event: MouseEvent): void {
+        // Second click of a double-click (force-graph pointer events carry no
+        // click count): the dblclick event handles it
+        if (this.isSecondClick(event) && this.lastClickNodeId === node.id) return
+        this.lastClickTime = event.timeStamp
+        this.lastClickNodeId = node.id
+        this.callbacks.onNodeClick(node)
+    }
+
+    /**
+     * Native dblclick, so the OS double-click speed applies and a busy main
+     * thread (the first click selects and re-lays out the graph) cannot push
+     * the clicks apart. The node is the one under the first click: it may
+     * have moved away from the pointer by the second.
+     */
+    private handleDoubleClick(event: MouseEvent): void {
+        const recent = event.timeStamp - this.lastClickTime < 1000
+        const node =
+            (recent && this.lastClickNodeId ? this.nodeMap.get(this.lastClickNodeId) : null) ??
+            this.hoveredNode
+        // lastClick* stay set: force-graph reports the second click on the
+        // next animation frame, after this event, and must still skip it
+        if (node) this.callbacks.onNodeDoubleClick(node)
     }
 
     private handleNodeHover(node: GraphNode | null): void {

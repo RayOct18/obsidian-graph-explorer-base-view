@@ -32,7 +32,6 @@ export class GraphSidePanel extends Component {
     private currentNode: GraphNode | null = null
     private renderComponent: Component | null = null
     private graphNodePaths: Set<string> = new Set()
-    private currentMarkdown = ''
     private mode: SidePanelMode = 'edit'
     private embed: MarkdownEmbed | null = null
     /** Incremented on every showNode/hide so stale async renders bail out. */
@@ -71,7 +70,6 @@ export class GraphSidePanel extends Component {
 
         // Frontier nodes have no file
         if (node.frontier) {
-            this.currentMarkdown = ''
             this.panelEl.removeClass('ge-side-panel--hidden')
             this.renderHeader(node)
             this.clearContent()
@@ -321,37 +319,12 @@ export class GraphSidePanel extends Component {
             if (editing) editBtn.addClass('ge-side-panel__edit-btn--active')
             this.registerDomEvent(editBtn, 'click', () => this.toggleMode())
         }
-
-        if (!node.frontier) {
-            const copyBtn = actionsEl.createEl('button', {
-                text: '\u2398 Copy md',
-                cls: 'ge-side-panel__copy-btn',
-                attr: {
-                    'aria-label': 'Copy note content as Markdown',
-                    'title': 'Copy note content as Markdown'
-                }
-            })
-            this.registerDomEvent(copyBtn, 'click', () => {
-                const markdown = this.embed
-                    ? stripFrontmatter(this.embed.text)
-                    : this.currentMarkdown
-                if (markdown) {
-                    void navigator.clipboard.writeText(markdown)
-                    copyBtn.textContent = '\u2713 Copied!'
-                    window.setTimeout(() => {
-                        copyBtn.textContent = '\u2398 Copy md'
-                    }, 1500)
-                }
-            })
-        }
     }
 
     private async renderContent(file: TFile): Promise<void> {
         this.clearContent()
 
         const content = await this.app.vault.cachedRead(file)
-        // Strip frontmatter for copy
-        this.currentMarkdown = stripFrontmatter(content)
         this.renderComponent = new Component()
         this.renderComponent.load()
 
@@ -429,7 +402,6 @@ export class GraphSidePanel extends Component {
             await this.disposeEditor()
             return false
         }
-        this.currentMarkdown = stripFrontmatter(embed.text)
         // Let Obsidian commands and hotkeys (bold, toggle checkbox, ...) target this editor
         embed.registerDomEvent(holder, 'focusin', () => {
             this.app.workspace.activeEditor = embed as unknown as MarkdownFileInfo
@@ -458,8 +430,4 @@ export class GraphSidePanel extends Component {
         this.renderComponent = null
         this.contentEl.empty()
     }
-}
-
-function stripFrontmatter(content: string): string {
-    return content.replace(/^---\n[\s\S]*?\n---\n*/, '').trim()
 }

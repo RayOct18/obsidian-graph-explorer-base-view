@@ -28,6 +28,17 @@ export function clampNodeSpacing(spacing: number): number {
     return Math.max(NODE_SPACING_MIN, Math.min(NODE_SPACING_MAX, spacing))
 }
 
+/** Node size and text size sliders, in percent */
+export const DISPLAY_SCALE_MIN = 20
+export const DISPLAY_SCALE_MAX = 300
+export const DISPLAY_SCALE_DEFAULT = 100
+
+/** Clamps a saved scale; anything that is not a finite number falls back to 100%. */
+export function clampDisplayScale(scale: unknown): number {
+    if (typeof scale !== 'number' || !Number.isFinite(scale)) return DISPLAY_SCALE_DEFAULT
+    return Math.max(DISPLAY_SCALE_MIN, Math.min(DISPLAY_SCALE_MAX, scale))
+}
+
 /**
  * A node in the graph representing a vault note.
  */

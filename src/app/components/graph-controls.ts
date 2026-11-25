@@ -345,6 +345,10 @@ export class GraphControls extends Component {
         this.scaleSlider.value = String(value)
     }
 
+    setTextScaleValue(value: number): void {
+        this.textSlider.value = String(value)
+    }
+
     setBatchSelectionCount(count: number): void {
         if (count > 0) {
             this.batchActionsEl.removeClass('ge-controls__batch--hidden')

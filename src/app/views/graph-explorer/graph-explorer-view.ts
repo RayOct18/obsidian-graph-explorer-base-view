@@ -1,9 +1,17 @@
-import { BasesView, debounce, Platform, TFile } from 'obsidian'
+import { BasesView, debounce, Platform, setIcon, TFile } from 'obsidian'
 import type { Debouncer, HoverParent, HoverPopover, QueryController } from 'obsidian'
 import type { GraphExplorerPlugin } from '../../plugin'
 import { GRAPH_EXPLORER_VIEW_TYPE } from './graph-explorer.constants'
 import { GraphCanvas } from '../../components/graph-canvas'
 import { GraphSidePanel } from '../../components/graph-side-panel'
+import { GraphCardLayer } from '../../components/graph-card-layer'
+import {
+    DEFAULT_CARD_SIZE,
+    parseExpandedCards,
+    serializeExpandedCards,
+    type CardSize,
+    type ExpandedCards
+} from '../../utils/expanded-cards'
 import { GraphControls } from '../../components/graph-controls'
 import { GraphZoomControls } from '../../components/graph-zoom-controls'
 import { GraphContextMenu } from '../../components/graph-context-menu'
@@ -13,6 +21,12 @@ import { GraphLegend } from '../../components/graph-legend'
 import type { LegendConfig, LegendSection } from '../../components/graph-legend'
 import { buildGraphData } from '../../services/graph-data-builder'
 import { revealNeighborhood } from '../../services/graph-neighborhood'
+import {
+    parseCameraState,
+    parseSelectedNode,
+    serializeCameraState,
+    type CameraState
+} from '../../utils/view-state'
 import {
     isModKeyPress,
     isPopoverShown,
@@ -32,7 +46,7 @@ import type {
     MaturityLevel,
     ViewPreset
 } from '../../types/graph-types'
-import { VIEW_PRESETS, clampNodeSpacing } from '../../types/graph-types'
+import { VIEW_PRESETS, clampDisplayScale, clampNodeSpacing } from '../../types/graph-types'
 import { log } from '../../../utils/log'
 
 /**
@@ -59,6 +73,14 @@ export class GraphExplorerView extends BasesView implements HoverParent {
     /** HoverParent: the Page preview popover currently owned by this view */
     hoverPopover: HoverPopover | null = null
     private lastHoverLink: string | null = null
+    private viewStateRestored = false
+    private pendingSelectionRestore = false
+    private applyLeftPanelHidden: ((hidden: boolean) => void) | null = null
+    private cardLayer: GraphCardLayer | null = null
+    /** Notes expanded into cards (path → size in graph units); saved per view */
+    private expandedCards: ExpandedCards = {}
+    /** Timer for opening the side panel on a second click of the selected note */
+    private pendingPanelOpen: number | null = null
     private debouncedUpdate: Debouncer<[], void>
     private initialized = false
     private activePreset = ''
@@ -87,6 +109,9 @@ export class GraphExplorerView extends BasesView implements HoverParent {
     }
 
     override onunload(): void {
+        this.cancelPendingPanelOpen()
+        // Write a pending camera save before the view goes away
+        this.saveCamera.run()
         this.graphCanvas?.unload()
         this.sidePanel?.unload()
         this.controls?.unload()
@@ -101,9 +126,15 @@ export class GraphExplorerView extends BasesView implements HoverParent {
         this.minimap = null
         this.legend = null
         this.contextMenu = null
+        this.cardLayer?.unload()
+        this.cardLayer = null
+        this.expandedCards = {}
         this.viewEl?.remove()
         this.viewEl = null
         this.initialized = false
+        this.viewStateRestored = false
+        this.pendingSelectionRestore = false
+        this.applyLeftPanelHidden = null
     }
 
     override onDataUpdated(): void {
@@ -129,12 +160,48 @@ export class GraphExplorerView extends BasesView implements HoverParent {
             onNodeRightClick: (node, event) => this.handleNodeRightClick(node, event),
             onBatchSelectionChange: (ids) => this.handleBatchSelectionChange(ids),
             onNodeDragEnd: (nodeId, x, y) => this.handleNodeDragEnd(nodeId, x, y),
-            onNodeHover: (node, event) => this.handleNodeHover(node, event)
+            onNodeHover: (node, event) => this.handleNodeHover(node, event),
+            onCameraChange: (camera) => this.saveCamera(camera),
+            onFrame: () => this.cardLayer?.position()
         })
         this.addChild(this.graphCanvas)
 
+        // Expanded note cards, laid over the canvas and following their nodes
+        this.cardLayer = new GraphCardLayer(graphArea, this.app, {
+            getNode: (id) => this.graphCanvas?.getNode(id) ?? null,
+            toScreen: (x, y) => this.graphCanvas?.toScreen(x, y) ?? null,
+            getZoom: () => this.graphCanvas?.getZoom() ?? 1,
+            onMove: (id, x, y) => this.graphCanvas?.moveNode(id, x, y),
+            onMoveEnd: (id, x, y) => this.handleNodeDragEnd(id, x, y),
+            onResizeEnd: (id, size) => this.setCard(id, size),
+            onClose: (id) => this.setCard(id, null),
+            onOpenInTab: (id) => this.openInTab(id)
+        })
+        this.addChild(this.cardLayer)
+
         // Left-side panel wrapper (controls + minimap)
         const leftPanel = graphArea.createDiv({ cls: 'ge-left-panel' })
+
+        // One button hides or shows the whole left panel; state is saved per view
+        const leftToggle = graphArea.createEl('button', {
+            cls: 'ge-left-panel-toggle clickable-icon'
+        })
+        const applyLeftPanelHidden = (hidden: boolean): void => {
+            graphArea.toggleClass('ge-graph-area--left-hidden', hidden)
+            setIcon(leftToggle, hidden ? 'panel-left-open' : 'panel-left-close')
+            const label = hidden
+                ? 'Show graph controls and minimap'
+                : 'Hide graph controls and minimap'
+            leftToggle.setAttr('aria-label', label)
+            leftToggle.setAttr('title', label)
+        }
+        this.applyLeftPanelHidden = applyLeftPanelHidden
+        applyLeftPanelHidden(this.config?.get('leftPanelHidden') === true)
+        this.registerDomEvent(leftToggle, 'click', () => {
+            const hidden = !graphArea.hasClass('ge-graph-area--left-hidden')
+            applyLeftPanelHidden(hidden)
+            this.config?.set('leftPanelHidden', hidden)
+        })
 
         // Controls overlay
         this.controls = new GraphControls(leftPanel, {
@@ -152,9 +219,12 @@ export class GraphExplorerView extends BasesView implements HoverParent {
             },
             onNodeScaleChange: (scale) => {
                 this.graphCanvas?.setNodeScale(scale)
+                // Persist per view, like node spacing, so reopening keeps it
+                this.config?.set('nodeScale', clampDisplayScale(scale))
             },
             onTextScaleChange: (scale) => {
                 this.graphCanvas?.setTextScale(scale)
+                this.config?.set('textScale', clampDisplayScale(scale))
             }
         })
         this.addChild(this.controls)
@@ -235,9 +305,63 @@ export class GraphExplorerView extends BasesView implements HoverParent {
             }
         )
 
-        // Initial render
+        // Initial render (the saved viewing state is restored on the first render with data)
         this.rebuildGraph()
     }
+
+    /**
+     * Reads the saved viewing state once, on the first render that has data.
+     * Not in onload: Bases may not have handed over the view config and query
+     * results yet, so reads there come back empty and the defaults win.
+     */
+    private restoreViewState(): void {
+        if (this.viewStateRestored || !this.config) return
+        this.viewStateRestored = true
+        this.applyLeftPanelHidden?.(this.config.get('leftPanelHidden') === true)
+        this.expandedCards = parseExpandedCards(this.config.get('expandedCards'))
+        this.graphCanvas?.setExpandedCards(this.expandedCards)
+        this.graphCanvas?.setInitialCamera(parseCameraState(this.config.get('camera')))
+        const savedSelection = parseSelectedNode(this.config.get('selectedNode'))
+        if (savedSelection && this.app.vault.getAbstractFileByPath(savedSelection)) {
+            this.selectedNodeId = savedSelection
+            this.pendingSelectionRestore = true
+        }
+    }
+
+    /** Re-selects the saved note after the first render; reopens the side panel if it was open. */
+    private restoreSelection(): void {
+        if (!this.selectedNodeId) return
+        const node = this.currentGraphData.nodes.find((n) => n.id === this.selectedNodeId)
+        if (!node) {
+            this.selectedNodeId = null
+            return
+        }
+        this.graphCanvas?.setSelectedNode(node.id)
+        if (this.config?.get('sidePanelOpen') === true) void this.sidePanel?.showNode(node)
+    }
+
+    /** Opens the side panel on a note and remembers that it is open. */
+    private openSidePanel(node: GraphNode): void {
+        void this.sidePanel?.showNode(node)
+        if (this.config?.get('sidePanelOpen') !== true) this.config?.set('sidePanelOpen', true)
+    }
+
+    private closeSidePanel(): void {
+        this.sidePanel?.hide()
+        if (this.config?.get('sidePanelOpen') === true) this.config?.set('sidePanelOpen', false)
+    }
+
+    /** Debounced: zoom/pan ends fire in bursts; the Base file is rewritten only on change. */
+    private saveCamera = debounce(
+        (camera: CameraState) => {
+            const serialized = serializeCameraState(camera)
+            if (this.config?.get('camera') !== serialized) {
+                this.config?.set('camera', serialized)
+            }
+        },
+        1000,
+        true
+    )
 
     // ── Config sync ───────────────────────────────────────────
 
@@ -261,6 +385,12 @@ export class GraphExplorerView extends BasesView implements HoverParent {
         const spacing = this.getNodeSpacing()
         this.graphCanvas?.setNodeSpacing(spacing)
         this.controls?.setSpacingValue(spacing)
+        const nodeScale = clampDisplayScale(this.config?.get('nodeScale'))
+        const textScale = clampDisplayScale(this.config?.get('textScale'))
+        this.graphCanvas?.setNodeScale(nodeScale)
+        this.graphCanvas?.setTextScale(textScale)
+        this.controls?.setScaleValue(nodeScale)
+        this.controls?.setTextScaleValue(textScale)
         this.legend?.update(this.getLegendConfig(colorBy))
 
         // Handle preset changes
@@ -371,6 +501,7 @@ export class GraphExplorerView extends BasesView implements HoverParent {
 
     private rebuildGraph(): void {
         if (!this.data) return
+        this.restoreViewState()
         const entries = this.data.data
         const exploredProperty = (this.config?.get('exploredProperty') as string) || 'explored'
         const showExternal = (this.config?.get('showExternalNodes') as boolean) || false
@@ -427,10 +558,16 @@ export class GraphExplorerView extends BasesView implements HoverParent {
             this.currentGraphData.nodes.filter((n) => !n.frontier).map((n) => n.id)
         )
         this.sidePanel?.setGraphNodePaths(nodePaths)
+        this.cardLayer?.sync(this.expandedCards)
 
         // Apply search highlight if active
         if (this.searchQuery) {
             this.applySearchHighlight(this.searchQuery)
+        }
+
+        if (this.pendingSelectionRestore) {
+            this.pendingSelectionRestore = false
+            this.restoreSelection()
         }
     }
 
@@ -490,10 +627,31 @@ export class GraphExplorerView extends BasesView implements HoverParent {
 
     // ── Node events ───────────────────────────────────────────
 
+    /**
+     * Selects the note; the side panel follows only when it is already open.
+     * Clicking the already selected note again opens the panel, after a short
+     * wait so the first click of a double-click (expand as card) does not.
+     */
     private handleNodeClick(node: GraphNode): void {
         this.contextMenu?.hide()
+        this.cancelPendingPanelOpen()
+        const wasSelected = this.selectedNodeId === node.id
         this.selectNode(node.id)
-        void this.sidePanel?.showNode(node)
+        if (this.sidePanel?.isVisible()) {
+            void this.sidePanel.showNode(node)
+        } else if (wasSelected) {
+            this.pendingPanelOpen = window.setTimeout(() => {
+                this.pendingPanelOpen = null
+                if (this.selectedNodeId === node.id) this.openSidePanel(node)
+            }, 500)
+        }
+    }
+
+    private cancelPendingPanelOpen(): void {
+        if (this.pendingPanelOpen !== null) {
+            window.clearTimeout(this.pendingPanelOpen)
+            this.pendingPanelOpen = null
+        }
     }
 
     // ── Hover preview (Page preview core plugin) ──────────────
@@ -538,22 +696,40 @@ export class GraphExplorerView extends BasesView implements HoverParent {
     private selectNode(nodeId: string | null): void {
         const changed = this.selectedNodeId !== nodeId
         this.selectedNodeId = nodeId
+        if (changed) this.config?.set('selectedNode', nodeId)
         if (changed && this.isRevealSelectedNeighborsOn()) this.rebuildGraph()
         this.graphCanvas?.setSelectedNode(nodeId)
     }
 
+    /** Double-click expands the note into a card on the graph (or collapses it). */
     private handleNodeDoubleClick(node: GraphNode): void {
-        if (node.frontier) return // can't open non-existent file
-        const file = this.app.vault.getAbstractFileByPath(node.id)
+        this.cancelPendingPanelOpen()
+        if (node.frontier) return
+        this.setCard(node.id, node.id in this.expandedCards ? null : DEFAULT_CARD_SIZE)
+    }
+
+    private openInTab(path: string): void {
+        const file = this.app.vault.getAbstractFileByPath(path)
         if (file instanceof TFile) {
             void this.app.workspace.getLeaf('tab').openFile(file)
         }
     }
 
+    /** Expands (size) or collapses (null) a card, then saves the set of cards in the view config. */
+    private setCard(path: string, size: CardSize | null): void {
+        const next = { ...this.expandedCards }
+        if (size) next[path] = size
+        else delete next[path]
+        this.expandedCards = next
+        this.graphCanvas?.setExpandedCards(next)
+        this.cardLayer?.sync(next)
+        this.config?.set('expandedCards', serializeExpandedCards(next))
+    }
+
     private handleBackgroundClick(): void {
         this.contextMenu?.hide()
         this.selectNode(null)
-        this.sidePanel?.hide()
+        this.closeSidePanel()
     }
 
     private handleNavigateToNode(nodeId: string): void {
@@ -561,7 +737,7 @@ export class GraphExplorerView extends BasesView implements HoverParent {
         if (!node) return
         this.selectNode(node.id)
         this.graphCanvas?.centerOnNode(node)
-        void this.sidePanel?.showNode(node)
+        this.openSidePanel(node)
     }
 
     private async handleToggleExplored(node: GraphNode): Promise<void> {
@@ -612,11 +788,26 @@ export class GraphExplorerView extends BasesView implements HoverParent {
     private getContextMenuActions(node: GraphNode): ContextMenuAction[] {
         const actions: ContextMenuAction[] = []
 
+        actions.push({
+            label: 'Open in side panel',
+            icon: '\u25E8',
+            callback: () => {
+                this.selectNode(node.id)
+                this.openSidePanel(node)
+            }
+        })
+
         if (!node.frontier) {
             actions.push({
                 label: 'Open in new tab',
                 icon: '\u2197',
-                callback: () => this.handleNodeDoubleClick(node)
+                callback: () => this.openInTab(node.id)
+            })
+            const expanded = node.id in this.expandedCards
+            actions.push({
+                label: expanded ? 'Collapse card' : 'Expand as card',
+                icon: expanded ? '\u2715' : '\u25A2',
+                callback: () => this.setCard(node.id, expanded ? null : DEFAULT_CARD_SIZE)
             })
         }
 
@@ -753,7 +944,7 @@ export class GraphExplorerView extends BasesView implements HoverParent {
             return
         }
         // Don't capture while typing in the side panel editor (Tab, Enter, arrows, Escape)
-        if (e.target instanceof HTMLElement && e.target.closest('.ge-side-panel')) {
+        if (e.target instanceof HTMLElement && e.target.closest('.ge-side-panel, .ge-card')) {
             return
         }
 
