@@ -18,6 +18,8 @@ export interface GraphCanvasCallbacks {
     onNodeRightClick: (node: GraphNode, event: MouseEvent) => void
     onBatchSelectionChange: (selectedIds: Set<string>) => void
     onNodeDragEnd: (nodeId: string, x: number, y: number) => void
+    /** Pointer entered (node) or left (null) a node; event is the latest pointer event */
+    onNodeHover?: (node: GraphNode | null, event: MouseEvent | null) => void
 }
 
 /** Categorical color palette for generic property visualization */
@@ -87,6 +89,7 @@ export class GraphCanvas extends Component {
 
     // Group drag state (Shift+drag moves neighbors)
     private shiftHeld = false
+    private lastPointerEvent: MouseEvent | null = null
     private dragNeighborOffsets: Map<string, { dx: number; dy: number }> | null = null
 
     // Visualization config
@@ -115,6 +118,18 @@ export class GraphCanvas extends Component {
         this.registerDomEvent(activeDocument, 'keyup', (e) => {
             if (e.key === 'Shift') this.shiftHeld = false
         })
+        this.registerDomEvent(this.canvasContainerEl, 'mousemove', (e) => {
+            this.lastPointerEvent = e
+        })
+    }
+
+    /** Latest pointer event over the canvas, used to position hover previews */
+    getLastPointerEvent(): MouseEvent | null {
+        return this.lastPointerEvent
+    }
+
+    getHoveredNode(): GraphNode | null {
+        return this.hoveredNode
     }
 
     override onunload(): void {
@@ -556,6 +571,7 @@ export class GraphCanvas extends Component {
         if (this.graph) {
             this.canvasContainerEl.style.cursor = node ? 'pointer' : 'default'
         }
+        this.callbacks.onNodeHover?.(node, this.lastPointerEvent)
     }
 
     // ── Layout ────────────────────────────────────────────────

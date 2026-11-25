@@ -42,6 +42,13 @@ When a new business rule is mentioned:
 - Non-connected nodes dim to 15% opacity when a node is hovered or search is active
 - Node shape is determined by wiki role and is not configurable by the user
 
+## Hover Preview
+
+- The plugin registers hover link source `graph-explorer` ("Graph Explorer", `defaultMod: true`); Page preview settings decide whether Ctrl/Cmd is required
+- Hovering a node triggers `hover-link` with `targetEl: null`, `linktext` = node path — same flow as the core graph. Leaving the node sets the popover off-target (`onTarget = false; transition()`); re-hovering the same node while its popover is shown keeps it
+- Page preview ignores a Mod press after hover when `targetEl` is null, so the view re-triggers on a Ctrl/Cmd keydown (not auto-repeat) while a node is hovered, with a copy of the last pointer event carrying the modifier
+- Frontier nodes have no preview
+
 ## Side Panel
 
 - The "explored" badge pill is not shown in the side panel — the toggle button alone indicates explored state

@@ -1,5 +1,5 @@
-import { BasesView, debounce, TFile } from 'obsidian'
-import type { Debouncer, QueryController } from 'obsidian'
+import { BasesView, debounce, Platform, TFile } from 'obsidian'
+import type { Debouncer, HoverParent, HoverPopover, QueryController } from 'obsidian'
 import type { GraphExplorerPlugin } from '../../plugin'
 import { GRAPH_EXPLORER_VIEW_TYPE } from './graph-explorer.constants'
 import { GraphCanvas } from '../../components/graph-canvas'
@@ -13,6 +13,13 @@ import { GraphLegend } from '../../components/graph-legend'
 import type { LegendConfig, LegendSection } from '../../components/graph-legend'
 import { buildGraphData } from '../../services/graph-data-builder'
 import { revealNeighborhood } from '../../services/graph-neighborhood'
+import {
+    isModKeyPress,
+    isPopoverShown,
+    setPopoverOnTarget,
+    withModModifier,
+    type PopoverLike
+} from '../../utils/hover-preview'
 import { setNoteExplored, setNoteMaturity } from '../../utils/frontmatter-utils'
 import type {
     EdgeSource,
@@ -33,7 +40,7 @@ import { log } from '../../../utils/log'
  * Creates child components, handles data flow, manages the graph lifecycle,
  * keyboard navigation, context menus, batch operations, and view presets.
  */
-export class GraphExplorerView extends BasesView {
+export class GraphExplorerView extends BasesView implements HoverParent {
     override type = GRAPH_EXPLORER_VIEW_TYPE
 
     private containerEl: HTMLElement
@@ -49,6 +56,9 @@ export class GraphExplorerView extends BasesView {
     private searchQuery = ''
     /** Selected node id; drives revealing its neighbors outside the base */
     private selectedNodeId: string | null = null
+    /** HoverParent: the Page preview popover currently owned by this view */
+    hoverPopover: HoverPopover | null = null
+    private lastHoverLink: string | null = null
     private debouncedUpdate: Debouncer<[], void>
     private initialized = false
     private activePreset = ''
@@ -118,7 +128,8 @@ export class GraphExplorerView extends BasesView {
             onBackgroundClick: () => this.handleBackgroundClick(),
             onNodeRightClick: (node, event) => this.handleNodeRightClick(node, event),
             onBatchSelectionChange: (ids) => this.handleBatchSelectionChange(ids),
-            onNodeDragEnd: (nodeId, x, y) => this.handleNodeDragEnd(nodeId, x, y)
+            onNodeDragEnd: (nodeId, x, y) => this.handleNodeDragEnd(nodeId, x, y),
+            onNodeHover: (node, event) => this.handleNodeHover(node, event)
         })
         this.addChild(this.graphCanvas)
 
@@ -201,6 +212,18 @@ export class GraphExplorerView extends BasesView {
 
         // Keyboard events
         this.registerDomEvent(this.viewEl, 'keydown', (e) => this.handleKeyDown(e))
+        // Pressing Mod while a node is hovered opens its preview
+        this.registerDomEvent(activeDocument, 'keydown', (e) => {
+            if (!isModKeyPress(e, Platform.isMacOS)) return
+            const node = this.graphCanvas?.getHoveredNode()
+            const pointer = this.graphCanvas?.getLastPointerEvent()
+            if (!node || !pointer) return
+            this.lastHoverLink = null
+            this.triggerHoverPreview(
+                node,
+                new MouseEvent('mouseover', withModModifier(pointer, Platform.isMacOS))
+            )
+        })
 
         // Listen for plugin settings changes
         this.registerDomEvent(
@@ -471,6 +494,40 @@ export class GraphExplorerView extends BasesView {
         this.contextMenu?.hide()
         this.selectNode(node.id)
         void this.sidePanel?.showNode(node)
+    }
+
+    // ── Hover preview (Page preview core plugin) ──────────────
+
+    private handleNodeHover(node: GraphNode | null, event: MouseEvent | null): void {
+        const popover = this.hoverPopover as unknown as PopoverLike | null
+        if (!node) {
+            setPopoverOnTarget(popover, false)
+            return
+        }
+        if (node.frontier || !event) return
+        this.triggerHoverPreview(node, event)
+    }
+
+    /**
+     * Same flow as the core graph: hover-link with no target element. Page
+     * preview decides whether Mod is required (Settings → Page preview).
+     */
+    private triggerHoverPreview(node: GraphNode, event: MouseEvent): void {
+        if (node.frontier) return
+        const popover = this.hoverPopover as unknown as PopoverLike | null
+        if (this.lastHoverLink === node.id && isPopoverShown(popover)) {
+            setPopoverOnTarget(popover, true)
+            return
+        }
+        this.lastHoverLink = node.id
+        this.app.workspace.trigger('hover-link', {
+            event,
+            source: GRAPH_EXPLORER_VIEW_TYPE,
+            hoverParent: this,
+            targetEl: null,
+            linktext: node.id,
+            sourcePath: ''
+        })
     }
 
     private isRevealSelectedNeighborsOn(): boolean {

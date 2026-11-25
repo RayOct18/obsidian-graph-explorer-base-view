@@ -21,6 +21,11 @@ export class GraphExplorerPlugin extends Plugin {
         log('Initializing', 'debug')
         await this.loadSettings()
         this.registerViews()
+        // Ctrl/Cmd + hover on a node shows Obsidian's page preview
+        this.registerHoverLinkSource(GRAPH_EXPLORER_VIEW_TYPE, {
+            display: 'Graph Explorer',
+            defaultMod: true
+        })
         this.addSettingTab(new GraphExplorerSettingTab(this.app, this))
     }
 

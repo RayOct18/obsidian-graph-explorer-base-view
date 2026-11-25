@@ -37,5 +37,6 @@ void mock.module('obsidian', () => ({
     AbstractInputSuggest: class AbstractInputSuggest {},
     SearchComponent: class SearchComponent {},
     debounce: (fn: (...args: unknown[]) => unknown) => fn,
+    Platform: { isMacOS: false, isMobile: false, isDesktop: true },
     setIcon: () => {}
 }))
