@@ -26,19 +26,20 @@ Global settings available in **Settings > Community plugins > Graph Explorer Bas
 
 Each Base view instance has its own settings, initialized from plugin defaults at creation time. Access these via the Base view's configuration:
 
-| Option                                 | Type     | Default     | Description                                                   |
-| -------------------------------------- | -------- | ----------- | ------------------------------------------------------------- |
-| Explored property name                 | text     | from plugin | Frontmatter property for explored status                      |
-| Maturity property name                 | text     | from plugin | Frontmatter property for maturity level                       |
-| Graduated notes property name          | text     | from plugin | Frontmatter property for graduated notes list                 |
-| Show linked notes outside the base     | toggle   | from plugin | Include nodes linked from the Base but not matching its query |
-| Show frontier nodes (unresolved links) | toggle   | from plugin | Show placeholder nodes for links to non-existent notes        |
-| Draw edges from                        | dropdown | from plugin | All links, frontmatter links only, or body links only         |
-| Filter by explored status              | dropdown | from plugin | Show all notes, explored only, or unexplored only             |
-| Color nodes by                         | dropdown | from plugin | Property used for node coloring                               |
-| Size nodes by                          | dropdown | from plugin | Property used for node sizing                                 |
-| Node spacing                           | slider   | from plugin | Force repulsion strength between nodes (200–5000)             |
-| View preset                            | dropdown | from plugin | Apply a built-in preset configuration                         |
+| Option                                                   | Type     | Default     | Description                                                                                      |
+| -------------------------------------------------------- | -------- | ----------- | ------------------------------------------------------------------------------------------------ |
+| Explored property name                                   | text     | from plugin | Frontmatter property for explored status                                                         |
+| Maturity property name                                   | text     | from plugin | Frontmatter property for maturity level                                                          |
+| Graduated notes property name                            | text     | from plugin | Frontmatter property for graduated notes list                                                    |
+| Show linked notes outside the base                       | toggle   | from plugin | Include nodes linked from the Base but not matching its query                                    |
+| Show linked notes outside the base for the selected note | toggle   | on          | On selection, reveal the selected note's neighbors (both link directions) that the Base excludes |
+| Show frontier nodes (unresolved links)                   | toggle   | from plugin | Show placeholder nodes for links to non-existent notes                                           |
+| Draw edges from                                          | dropdown | from plugin | All links, frontmatter links only, or body links only                                            |
+| Filter by explored status                                | dropdown | from plugin | Show all notes, explored only, or unexplored only                                                |
+| Color nodes by                                           | dropdown | from plugin | Property used for node coloring                                                                  |
+| Size nodes by                                            | dropdown | from plugin | Property used for node sizing                                                                    |
+| Node spacing                                             | slider   | from plugin | Force repulsion strength between nodes (200–5000)                                                |
+| View preset                                              | dropdown | from plugin | Apply a built-in preset configuration                                                            |
 
 All view options inherit their initial value from plugin settings. After that, they are independent — changing plugin settings does not affect existing views.
 

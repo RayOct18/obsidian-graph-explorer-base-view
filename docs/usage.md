@@ -150,6 +150,8 @@ Frontier nodes represent unresolved links — references to notes that don't exi
 
 External nodes are notes linked from within the Base but not matching the Base query themselves. Enable them via **Show linked notes outside the base**. They appear with a dashed outline in muted colors.
 
+**Selected note's neighbors.** With **Show linked notes outside the base for the selected note** (on by default), clicking a node also reveals the notes it links to or is linked from that the Base filter excludes — for example the finished tasks of an open epic. They appear as external nodes, keep their frontmatter (so color-by-property applies), and start next to the selected node. Click one to walk further; click the background to hide them again. Edges follow **Draw edges from**.
+
 ## Edge source
 
 The view option **Draw edges from** picks which links become edges:
