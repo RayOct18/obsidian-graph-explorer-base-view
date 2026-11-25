@@ -16,16 +16,18 @@ nav_order: 2
 
 ### Mouse
 
-| Action            | Effect                                                                          |
-| ----------------- | ------------------------------------------------------------------------------- |
-| Click node        | Select node, open side panel                                                    |
-| Ctrl/Cmd + hover  | Page preview of the note (also: hover, then press Ctrl/Cmd)                     |
-| Double-click node | Open note in a new tab                                                          |
-| Right-click node  | Context menu (open, explored toggle, set maturity, copy wikilink, batch select) |
-| Drag node         | Reposition it in the graph (position is saved and restored on reopen)           |
-| Shift+drag node   | Move the node and all its direct neighbors as a group                           |
-| Scroll wheel      | Zoom in/out                                                                     |
-| Click background  | Deselect node, close side panel                                                 |
+| Action            | Effect                                                                            |
+| ----------------- | --------------------------------------------------------------------------------- |
+| Click node        | Select node; the side panel follows it only when already open                     |
+| Ctrl/Cmd + hover  | Page preview of the note (also: hover, then press Ctrl/Cmd)                       |
+| Double-click node | Expand the note into an editable card on the graph (again to collapse)            |
+| Right-click node  | Context menu (open, explored toggle, set maturity, copy wikilink, batch select)   |
+| Drag node         | Reposition it in the graph (position is saved and restored on reopen)             |
+| Shift+drag node   | Move the node and all its direct neighbors as a group                             |
+| Scroll wheel      | Zoom in/out                                                                       |
+| Click background  | Deselect node, close side panel                                                   |
+| Reopen view       | Returns to the last zoom, position and selected note (with its side panel)        |
+| Panel toggle      | Button beside the left panel hides/shows controls + minimap (remembered per view) |
 
 ### Keyboard
 
@@ -52,13 +54,25 @@ The controls panel (top-left) provides:
 
 Click the panel header to collapse/expand it.
 
+## Note cards
+
+Double-click a node (or right-click → **Expand as card**) to open the note as a card on the graph, with Obsidian's editor inside: live preview, properties and hotkeys work, edits save automatically.
+
+- Cards scale with the zoom, like Canvas cards, and follow their node.
+- Other nodes move out of the way of a card.
+- Drag the card header to move it (the node is pinned there); drag the bottom-right corner to resize.
+- **↗** opens the note in a new tab, **✕** collapses the card. Right-click → **Open in new tab** also opens a tab.
+- Expanded cards and their sizes are remembered per view.
+
 ## Side panel
+
+Open it by clicking the selected node again (a separate click, not a double-click) or with right-click → **Open in side panel**. While it is open, clicking another node shows that note; close it with ✕ or by clicking the background. Whether it is open is remembered per view.
 
 When a node is selected, the right-side panel shows:
 
 - **Title** (click to open note in a new tab)
 - **Badges** for wiki role, confidence level, graduated notes count, tags, and external/frontier status
-- **Action buttons**: toggle explored status, set maturity level (color-coded dropdown), edit in panel, copy markdown content
+- **Action buttons**: toggle explored status, set maturity level (color-coded dropdown), edit/preview toggle
 - **Full rendered note content** with working links
 
 ### Editing in the panel

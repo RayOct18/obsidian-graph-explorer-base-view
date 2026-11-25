@@ -50,7 +50,7 @@ Graph Explorer Base View is an Obsidian plugin that registers a custom Base view
 - Right-side resizable panel (240px–70% viewport width)
 - Shows selected note content via `MarkdownRenderer.render()`
 - Header with clickable title, close button, and metadata badges (external, frontier, wiki_role, confidence, graduated notes count, tags)
-- Action buttons: toggle explored, maturity dropdown (color-coded by current level), copy markdown
+- Action buttons: toggle explored, maturity dropdown (color-coded by current level), edit/preview toggle
 - Maturity dropdown updates styling dynamically on change, includes emoji prefixes per level
 - Callbacks: `onToggleExplored`, `onSetMaturity`, `onClose`, `onNavigateToNode`
 - Internal links navigate in-panel if target is in graph, otherwise open in new tab
@@ -127,7 +127,7 @@ Graph Explorer Base View is an Obsidian plugin that registers a custom Base view
 6. View syncs config (color by, size by, filters) to canvas and updates legend
 7. `force-graph` runs D3 force simulation and renders on Canvas
 8. Custom `paintNode` draws shapes with solid/hollow fill and green border for explored
-9. User clicks node → side panel shows rendered note content
+9. User clicks node → node is selected; the side panel (opened from the context menu) follows the selection while open
 10. User toggles explored → `node.explored` updated optimistically + frontmatter updated via `processFrontMatter()`
 11. User sets maturity → `node.maturity` updated optimistically + frontmatter updated
 12. User drags node → position pinned and saved to view config
