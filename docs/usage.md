@@ -57,8 +57,16 @@ When a node is selected, the right-side panel shows:
 
 - **Title** (click to open note in a new tab)
 - **Badges** for wiki role, confidence level, graduated notes count, tags, and external/frontier status
-- **Action buttons**: toggle explored status, set maturity level (color-coded dropdown), copy markdown content
+- **Action buttons**: toggle explored status, set maturity level (color-coded dropdown), edit in panel, copy markdown content
 - **Full rendered note content** with working links
+
+### Editing in the panel
+
+The panel opens in edit mode: the content area is Obsidian's own editor (the same one Canvas uses for file cards): live preview, properties, inline title, hotkeys and commands all work. Edits save automatically. Click **👁 Preview** for the rendered, read-only view (in-panel link navigation works there), and **✎ Edit** to return.
+
+The mode sticks while you click through nodes, so you can edit several notes in a row. Pending edits are written before the panel switches to another note or closes. Graph keyboard shortcuts (Tab, Enter, arrows, Escape) are ignored while the cursor is in the panel.
+
+The editor relies on an internal Obsidian API. If a future Obsidian version removes it, the Edit button disappears and the panel stays read-only.
 
 The maturity dropdown is color-coded to match the current level (green=mature, blue=substantial, yellow=draft, orange=stub). Changes are applied immediately to the note's frontmatter.
 

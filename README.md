@@ -30,6 +30,7 @@ Where Obsidian's built-in graph shows the whole vault, Graph Explorer works on t
 - Click any node to open its rendered content in a resizable right-side panel.
 - Header badges surface key metadata (external, frontier, wiki role, confidence, graduated count, tags).
 - Toggle explored, change maturity level and copy the note as markdown directly from the panel.
+- Edit the note in place with Obsidian's own editor (✎ Edit / 👁 Preview toggle).
 - Internal links navigate in-panel when the target is in the graph, or open in a new tab otherwise.
 
 ### Controls overlay
