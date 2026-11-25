@@ -71,7 +71,12 @@ export function buildGraphData(
     for (const sourcePath of filteredPaths) {
         linkTargets.set(
             sourcePath,
-            getLinkTargets(sourcePath, entryMap.get(sourcePath), metadataCache, edgeSource)
+            getLinkTargets(
+                sourcePath,
+                getEntryMetadata(entryMap.get(sourcePath), metadataCache),
+                metadataCache,
+                edgeSource
+            )
         )
     }
 
@@ -204,7 +209,14 @@ export function buildGraphData(
     return { nodes: allNodes, links }
 }
 
-interface LinkTargets {
+function getEntryMetadata(
+    entry: BasesEntry | undefined,
+    metadataCache: MetadataCache
+): CachedMetadata | null {
+    return entry ? metadataCache.getFileCache(entry.file) : null
+}
+
+export interface LinkTargets {
     /** Vault paths of existing link targets */
     resolved: string[]
     /** Link paths of targets that do not exist */
@@ -218,9 +230,9 @@ interface LinkTargets {
  * declared in properties (`frontmatterLinks`) apart from those in the body
  * (`links` and `embeds`), and resolve each one the way Obsidian does.
  */
-function getLinkTargets(
+export function getLinkTargets(
     sourcePath: string,
-    entry: BasesEntry | undefined,
+    metadata: CachedMetadata | null,
     metadataCache: MetadataCache,
     edgeSource: EdgeSource
 ): LinkTargets {
@@ -231,7 +243,6 @@ function getLinkTargets(
         }
     }
 
-    const metadata = entry ? metadataCache.getFileCache(entry.file) : null
     const references: Reference[] =
         edgeSource === 'frontmatter'
             ? (metadata?.frontmatterLinks ?? [])

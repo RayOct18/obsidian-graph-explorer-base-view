@@ -29,7 +29,9 @@ When a new business rule is mentioned:
 - Connections between nodes are derived from Obsidian's `metadataCache.resolvedLinks`
 - The "Draw edges from" option (`edgeSource`) restricts edges to frontmatter links or body links (links + embeds); default `all` keeps the `resolvedLinks` behavior unchanged. Frontier nodes follow the same restriction
 - Bidirectional links are deduplicated (A→B and B→A produce one edge)
-- External nodes (linked but not in the Base filter) are only shown when the "Show linked notes outside the base" option is enabled
+- External nodes (linked but not in the Base filter) are only shown when the "Show linked notes outside the base" option is enabled, except the selected note's neighbors below
+- "Show linked notes outside the base for the selected note" (`revealSelectedNeighbors`, default on; unset counts as on): while a node is selected, its direct neighbors not in the graph are added as external nodes — outgoing and incoming links, restricted by `edgeSource`. They carry real frontmatter. Edges added: revealed node ↔ any node in the graph. If the selected node is itself outside the graph, it is added too. Clearing the selection removes them. Existing nodes' connection counts are not changed (sizes stay stable)
+- Rebuilt node objects keep their current x/y/vx/vy; new nodes start on a 40px circle around their first positioned neighbor (`carryOverPositions`). Saved (pinned) positions win
 - Frontier nodes (unresolved link targets) are only shown when the "Show frontier nodes" option is enabled
 - Node size is proportional to connection count by default (configurable to uniform)
 

@@ -32,6 +32,12 @@ export function getGraphExplorerViewOptions(settings?: PluginSettings): BasesAll
         },
         {
             type: 'toggle',
+            key: 'revealSelectedNeighbors',
+            displayName: 'Show linked notes outside the base for the selected note',
+            default: true
+        },
+        {
+            type: 'toggle',
             key: 'showFrontier',
             displayName: 'Show frontier nodes (unresolved links)',
             default: s.showFrontierDefault

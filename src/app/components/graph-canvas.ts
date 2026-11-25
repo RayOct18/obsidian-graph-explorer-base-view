@@ -9,6 +9,7 @@ import type {
     MaturityLevel
 } from '../types/graph-types'
 import { clampNodeSpacing } from '../types/graph-types'
+import { carryOverPositions } from '../utils/layout-carry-over'
 
 export interface GraphCanvasCallbacks {
     onNodeClick: (node: GraphNode) => void
@@ -296,6 +297,8 @@ export class GraphCanvas extends Component {
                 node.fy = saved.y
             }
         }
+        // Rebuilt node objects keep their current layout; new ones start beside a neighbor
+        carryOverPositions(data, this.nodeMap)
 
         // Build adjacency map
         this.adjacencyMap.clear()

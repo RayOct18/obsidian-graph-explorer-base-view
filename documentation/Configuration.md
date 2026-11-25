@@ -22,19 +22,20 @@ Plugin settings define defaults for new views. After a view is created, its sett
 
 Each view inherits plugin settings as initial defaults, then operates independently.
 
-| Option                                 | Type     | Default     | Description                                          |
-| -------------------------------------- | -------- | ----------- | ---------------------------------------------------- |
-| Explored property name                 | text     | from plugin | Frontmatter property for explored status             |
-| Maturity property name                 | text     | from plugin | Frontmatter property for maturity level              |
-| Graduated notes property name          | text     | from plugin | Frontmatter property for graduated notes list        |
-| Show linked notes outside the base     | toggle   | from plugin | Include external linked nodes                        |
-| Show frontier nodes (unresolved links) | toggle   | from plugin | Show placeholder nodes for non-existent link targets |
-| Draw edges from                        | dropdown | from plugin | All / Frontmatter links only / Body links only       |
-| Filter by explored status              | dropdown | from plugin | All / Explored only / Unexplored only                |
-| Color nodes by                         | dropdown | from plugin | Property for node coloring                           |
-| Size nodes by                          | dropdown | from plugin | Property for node sizing                             |
-| Node spacing                           | slider   | from plugin | Force repulsion strength (200–5000)                  |
-| View preset                            | dropdown | from plugin | Apply a built-in preset                              |
+| Option                                                                               | Type     | Default     | Description                                          |
+| ------------------------------------------------------------------------------------ | -------- | ----------- | ---------------------------------------------------- |
+| Explored property name                                                               | text     | from plugin | Frontmatter property for explored status             |
+| Maturity property name                                                               | text     | from plugin | Frontmatter property for maturity level              |
+| Graduated notes property name                                                        | text     | from plugin | Frontmatter property for graduated notes list        |
+| Show linked notes outside the base                                                   | toggle   | from plugin | Include external linked nodes                        |
+| Show linked notes outside the base for the selected note (`revealSelectedNeighbors`) | toggle   | on          | Reveal selected note's out-of-base neighbors         |
+| Show frontier nodes (unresolved links)                                               | toggle   | from plugin | Show placeholder nodes for non-existent link targets |
+| Draw edges from                                                                      | dropdown | from plugin | All / Frontmatter links only / Body links only       |
+| Filter by explored status                                                            | dropdown | from plugin | All / Explored only / Unexplored only                |
+| Color nodes by                                                                       | dropdown | from plugin | Property for node coloring                           |
+| Size nodes by                                                                        | dropdown | from plugin | Property for node sizing                             |
+| Node spacing                                                                         | slider   | from plugin | Force repulsion strength (200–5000)                  |
+| View preset                                                                          | dropdown | from plugin | Apply a built-in preset                              |
 
 ## Canvas Controls
 

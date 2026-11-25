@@ -12,6 +12,7 @@ import { GraphMinimap } from '../../components/graph-minimap'
 import { GraphLegend } from '../../components/graph-legend'
 import type { LegendConfig, LegendSection } from '../../components/graph-legend'
 import { buildGraphData } from '../../services/graph-data-builder'
+import { revealNeighborhood } from '../../services/graph-neighborhood'
 import { setNoteExplored, setNoteMaturity } from '../../utils/frontmatter-utils'
 import type {
     EdgeSource,
@@ -46,6 +47,8 @@ export class GraphExplorerView extends BasesView {
     private contextMenu: GraphContextMenu | null = null
     private currentGraphData: GraphData = { nodes: [], links: [] }
     private searchQuery = ''
+    /** Selected node id; drives revealing its neighbors outside the base */
+    private selectedNodeId: string | null = null
     private debouncedUpdate: Debouncer<[], void>
     private initialized = false
     private activePreset = ''
@@ -367,6 +370,15 @@ export class GraphExplorerView extends BasesView {
             edgeSource
         )
 
+        if (this.selectedNodeId && this.isRevealSelectedNeighborsOn()) {
+            this.currentGraphData = revealNeighborhood(
+                this.currentGraphData,
+                this.selectedNodeId,
+                this.app.metadataCache,
+                { edgeSource, exploredProperty, maturityProperty, graduatedNotesProperty }
+            )
+        }
+
         if (this.currentGraphData.nodes.length === 0) {
             if (!this.viewEl?.querySelector('.ge-empty-state')) {
                 this.viewEl?.createDiv({
@@ -457,8 +469,20 @@ export class GraphExplorerView extends BasesView {
 
     private handleNodeClick(node: GraphNode): void {
         this.contextMenu?.hide()
-        this.graphCanvas?.setSelectedNode(node.id)
+        this.selectNode(node.id)
         void this.sidePanel?.showNode(node)
+    }
+
+    private isRevealSelectedNeighborsOn(): boolean {
+        return this.config?.get('revealSelectedNeighbors') !== false
+    }
+
+    /** Selects a node (or clears with null) and re-reveals neighbors outside the base. */
+    private selectNode(nodeId: string | null): void {
+        const changed = this.selectedNodeId !== nodeId
+        this.selectedNodeId = nodeId
+        if (changed && this.isRevealSelectedNeighborsOn()) this.rebuildGraph()
+        this.graphCanvas?.setSelectedNode(nodeId)
     }
 
     private handleNodeDoubleClick(node: GraphNode): void {
@@ -471,14 +495,14 @@ export class GraphExplorerView extends BasesView {
 
     private handleBackgroundClick(): void {
         this.contextMenu?.hide()
-        this.graphCanvas?.setSelectedNode(null)
+        this.selectNode(null)
         this.sidePanel?.hide()
     }
 
     private handleNavigateToNode(nodeId: string): void {
         const node = this.currentGraphData.nodes.find((n) => n.id === nodeId)
         if (!node) return
-        this.graphCanvas?.setSelectedNode(node.id)
+        this.selectNode(node.id)
         this.graphCanvas?.centerOnNode(node)
         void this.sidePanel?.showNode(node)
     }
