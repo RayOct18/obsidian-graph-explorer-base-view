@@ -45,3 +45,8 @@ When a new business rule is mentioned:
 - The "explored" badge pill is not shown in the side panel — the toggle button alone indicates explored state
 - Internal links navigate in-panel when the target is a node in the current graph; otherwise they open in a new tab
 - Middle-click on links always opens in a new tab
+- Edit mode mounts Obsidian's internal markdown embed (`app.embedRegistry.getEmbedCreator`, same editor as Canvas file cards). Internal API: guarded at runtime; when missing, the Edit button is hidden and the panel stays read-only
+- The editor sets `useLocalPropertiesFoldState = true` so properties follow the note's own fold state (expanded unless folded in the note), not Obsidian's shared embed state that starts collapsed
+- The panel opens in edit mode by default; edit/preview mode is sticky across node selections until toggled
+- Pending edits are flushed (`save(text, true)`, debounce cancelled) before the editor is unloaded on node switch, close, or view unload — no edits lost to the embed's 2 s save debounce
+- View keyboard shortcuts are ignored when the event target is inside the side panel

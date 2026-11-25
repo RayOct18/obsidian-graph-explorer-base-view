@@ -671,6 +671,10 @@ export class GraphExplorerView extends BasesView {
         if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
             return
         }
+        // Don't capture while typing in the side panel editor (Tab, Enter, arrows, Escape)
+        if (e.target instanceof HTMLElement && e.target.closest('.ge-side-panel')) {
+            return
+        }
 
         switch (e.key) {
             case 'Tab':

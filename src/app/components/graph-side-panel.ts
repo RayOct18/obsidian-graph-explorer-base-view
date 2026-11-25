@@ -1,6 +1,15 @@
 import { Component, MarkdownRenderer, TFile } from 'obsidian'
-import type { App } from 'obsidian'
+import type { App, MarkdownFileInfo } from 'obsidian'
 import type { GraphNode, MaturityLevel } from '../types/graph-types'
+import {
+    canEmbedEditor,
+    createMarkdownEmbed,
+    flushMarkdownEmbed,
+    type MarkdownEmbed
+} from '../utils/markdown-embed'
+import { log } from '../../utils/log'
+
+export type SidePanelMode = 'preview' | 'edit'
 
 export interface GraphSidePanelCallbacks {
     onToggleExplored: (node: GraphNode) => void
@@ -11,7 +20,8 @@ export interface GraphSidePanelCallbacks {
 
 /**
  * Right-side panel showing the selected note with rendered content,
- * wiki role, confidence, and tags.
+ * wiki role, confidence, and tags. In edit mode the content area hosts
+ * Obsidian's own markdown editor (the one Canvas uses for file cards).
  */
 export class GraphSidePanel extends Component {
     private panelEl: HTMLElement
@@ -23,6 +33,10 @@ export class GraphSidePanel extends Component {
     private renderComponent: Component | null = null
     private graphNodePaths: Set<string> = new Set()
     private currentMarkdown = ''
+    private mode: SidePanelMode = 'edit'
+    private embed: MarkdownEmbed | null = null
+    /** Incremented on every showNode/hide so stale async renders bail out. */
+    private renderToken = 0
 
     constructor(containerEl: HTMLElement, app: App, callbacks: GraphSidePanelCallbacks) {
         super()
@@ -40,12 +54,18 @@ export class GraphSidePanel extends Component {
     }
 
     override onunload(): void {
+        void this.disposeEditor()
         this.renderComponent?.unload()
         this.renderComponent = null
         this.panelEl.remove()
     }
 
     async showNode(node: GraphNode): Promise<void> {
+        const token = ++this.renderToken
+        // Write pending edits of the previous note before its editor goes away
+        await this.disposeEditor()
+        if (token !== this.renderToken) return
+
         this.currentNode = node
         this.contentEl.scrollTop = 0
 
@@ -67,13 +87,26 @@ export class GraphSidePanel extends Component {
 
         this.panelEl.removeClass('ge-side-panel--hidden')
         this.renderHeader(node)
+        if (this.mode === 'edit' && (await this.renderEditor(file, token))) return
+        if (token !== this.renderToken) return
         await this.renderContent(file)
     }
 
     hide(): void {
+        this.renderToken++
         this.panelEl.addClass('ge-side-panel--hidden')
         this.currentNode = null
+        void this.disposeEditor()
         this.clearContent()
+    }
+
+    getMode(): SidePanelMode {
+        return this.mode
+    }
+
+    private toggleMode(): void {
+        this.mode = this.mode === 'edit' ? 'preview' : 'edit'
+        if (this.currentNode) void this.showNode(this.currentNode)
     }
 
     isVisible(): boolean {
@@ -274,6 +307,21 @@ export class GraphSidePanel extends Component {
             })
         }
 
+        const editFile = node.frontier ? null : this.app.vault.getAbstractFileByPath(node.id)
+        if (editFile instanceof TFile && canEmbedEditor(this.app, editFile)) {
+            const editing = this.mode === 'edit'
+            const editBtn = actionsEl.createEl('button', {
+                text: editing ? '\u{1F441} Preview' : '\u270E Edit',
+                cls: 'ge-side-panel__edit-btn',
+                attr: {
+                    'aria-label': editing ? 'Show rendered note' : 'Edit note in panel',
+                    'title': editing ? 'Show rendered note' : 'Edit note in panel'
+                }
+            })
+            if (editing) editBtn.addClass('ge-side-panel__edit-btn--active')
+            this.registerDomEvent(editBtn, 'click', () => this.toggleMode())
+        }
+
         if (!node.frontier) {
             const copyBtn = actionsEl.createEl('button', {
                 text: '\u2398 Copy md',
@@ -284,8 +332,11 @@ export class GraphSidePanel extends Component {
                 }
             })
             this.registerDomEvent(copyBtn, 'click', () => {
-                if (this.currentMarkdown) {
-                    void navigator.clipboard.writeText(this.currentMarkdown)
+                const markdown = this.embed
+                    ? stripFrontmatter(this.embed.text)
+                    : this.currentMarkdown
+                if (markdown) {
+                    void navigator.clipboard.writeText(markdown)
                     copyBtn.textContent = '\u2713 Copied!'
                     window.setTimeout(() => {
                         copyBtn.textContent = '\u2398 Copy md'
@@ -300,7 +351,7 @@ export class GraphSidePanel extends Component {
 
         const content = await this.app.vault.cachedRead(file)
         // Strip frontmatter for copy
-        this.currentMarkdown = content.replace(/^---\n[\s\S]*?\n---\n*/, '').trim()
+        this.currentMarkdown = stripFrontmatter(content)
         this.renderComponent = new Component()
         this.renderComponent.load()
 
@@ -353,9 +404,62 @@ export class GraphSidePanel extends Component {
         })
     }
 
+    /**
+     * Mounts an editable markdown embed for `file`.
+     * Returns false when the internal editor API is unavailable (caller falls back to preview).
+     */
+    private async renderEditor(file: TFile, token: number): Promise<boolean> {
+        this.clearContent()
+        const holder = this.contentEl.createDiv({
+            cls: 'ge-side-panel__editor markdown-embed'
+        })
+        const embed = createMarkdownEmbed(this.app, holder, file)
+        if (!embed) {
+            holder.remove()
+            return false
+        }
+        this.embed = embed
+        this.addChild(embed)
+        try {
+            await embed.loadFile()
+            if (token !== this.renderToken || this.embed !== embed) return true
+            embed.showEditor()
+        } catch (error) {
+            log('Failed to open the side panel editor', 'warn', error)
+            await this.disposeEditor()
+            return false
+        }
+        this.currentMarkdown = stripFrontmatter(embed.text)
+        // Let Obsidian commands and hotkeys (bold, toggle checkbox, ...) target this editor
+        embed.registerDomEvent(holder, 'focusin', () => {
+            this.app.workspace.activeEditor = embed as unknown as MarkdownFileInfo
+        })
+        return true
+    }
+
+    /** Saves pending edits, then unloads the editor. Safe to call when no editor is mounted. */
+    private async disposeEditor(): Promise<void> {
+        const embed = this.embed
+        if (!embed) return
+        this.embed = null
+        try {
+            await flushMarkdownEmbed(embed)
+        } catch (error) {
+            log('Failed to save side panel edits', 'error', error)
+        }
+        if ((this.app.workspace.activeEditor as unknown) === embed) {
+            this.app.workspace.activeEditor = null
+        }
+        this.removeChild(embed)
+    }
+
     private clearContent(): void {
         this.renderComponent?.unload()
         this.renderComponent = null
         this.contentEl.empty()
     }
+}
+
+function stripFrontmatter(content: string): string {
+    return content.replace(/^---\n[\s\S]*?\n---\n*/, '').trim()
 }

@@ -290,6 +290,37 @@
     color: var(--text-normal);
 }
 
+.ge-side-panel__edit-btn {
+    @apply text-xs px-2 py-1 rounded cursor-pointer;
+    border: 1px solid var(--background-modifier-border);
+    background-color: var(--interactive-normal);
+    color: var(--text-muted);
+    transition: all 0.15s ease;
+}
+
+.ge-side-panel__edit-btn:hover {
+    background-color: var(--interactive-hover);
+    color: var(--text-normal);
+}
+
+.ge-side-panel__edit-btn--active {
+    background-color: var(--interactive-accent);
+    border-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+/* Embedded Obsidian editor: drop the embed chrome, keep the editor full height */
+.ge-side-panel__editor.markdown-embed {
+    border: none;
+    padding: 0;
+    margin: 0;
+    min-height: 100%;
+}
+
+.ge-side-panel__editor .markdown-embed-content {
+    max-height: none;
+}
+
 .ge-side-panel__close {
     @apply text-base cursor-pointer rounded;
     color: var(--text-muted);
