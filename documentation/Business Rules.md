@@ -45,6 +45,7 @@ When a new business rule is mentioned:
 - Node rings must not overlap — each ring type has a distinct radius slot (explored innermost, then confidence, hover glow, selected, focused, batch outermost)
 - Highlight transitions use smooth fade-in/fade-out (exponential convergence) rather than instant opacity changes
 - Non-connected nodes dim to 15% opacity when a node is hovered or search is active
+- While a node is hovered, only that node's label is drawn (neighbors still stay undimmed and their links highlighted). Without hover, labels show for the selected / focused node, neighbors of the selection, and index notes
 - Node shape is determined by wiki role and is not configurable by the user
 - Coloring by a generic property (any `Color nodes by` value other than explored / confidence / wiki_role / maturity / created): each distinct value gets a palette color by its place in the sorted list of values (not the order notes come in), so colors stay put when notes are added or removed; only a new or vanished value can shift the others
 - The legend lists each value with its color and note count. Colors are not user-adjustable (Ray did not want that)
