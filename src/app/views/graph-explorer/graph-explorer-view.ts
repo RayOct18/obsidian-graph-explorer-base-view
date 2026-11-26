@@ -19,7 +19,7 @@ import { GraphContextMenu } from '../../components/graph-context-menu'
 import type { ContextMenuAction } from '../../components/graph-context-menu'
 import { GraphMinimap } from '../../components/graph-minimap'
 import { GraphLegend } from '../../components/graph-legend'
-import type { LegendConfig, LegendSection } from '../../components/graph-legend'
+import type { LegendConfig, LegendEntry, LegendSection } from '../../components/graph-legend'
 import { buildGraphData } from '../../services/graph-data-builder'
 import { revealNeighborhood } from '../../services/graph-neighborhood'
 import {
@@ -428,7 +428,7 @@ export class GraphExplorerView extends BasesView implements HoverParent {
         const cardFontSize = clampCardFontSize(this.config?.get('cardFontSize'))
         this.cardLayer?.setFontSize(cardFontSize)
         this.controls?.setCardFontSizeValue(cardFontSize)
-        this.legend?.update(this.getLegendConfig(colorBy))
+        this.updateLegend()
 
         // Handle preset changes
         const preset = (this.config?.get('preset') as string) || ''
@@ -450,6 +450,32 @@ export class GraphExplorerView extends BasesView implements HoverParent {
     }
 
     // ── Legend ─────────────────────────────────────────────────
+
+    private getColorBy(): string {
+        return (this.config?.get('colorBy') as string) || 'explored'
+    }
+
+    private updateLegend(): void {
+        this.legend?.update(this.getLegendConfig(this.getColorBy()))
+    }
+
+    /** One row per value of a generic "color by" property, with its note count */
+    private getValueColorSection(colorBy: string): LegendSection {
+        const entries: LegendEntry[] = (this.graphCanvas?.getValueColorEntries() ?? []).map(
+            (entry) => ({
+                color: entry.color,
+                label: entry.value,
+                detail: String(entry.count)
+            })
+        )
+        return {
+            title: `Color — ${colorBy}`,
+            entries:
+                entries.length > 0
+                    ? entries
+                    : [{ color: 'rgba(148, 163, 184, 0.7)', label: 'No values' }]
+        }
+    }
 
     private getLegendConfig(colorBy: string): LegendConfig {
         const sections: LegendSection[] = []
@@ -527,10 +553,7 @@ export class GraphExplorerView extends BasesView implements HoverParent {
                     ]
                 }
             default:
-                return {
-                    title: `Color — ${colorBy}`,
-                    entries: [{ color: 'rgba(148, 163, 184, 0.7)', label: 'Varies by value' }]
-                }
+                return this.getValueColorSection(colorBy)
         }
     }
 
@@ -585,6 +608,8 @@ export class GraphExplorerView extends BasesView implements HoverParent {
         this.pruneStalePositions(positions)
         this.graphCanvas?.setSavedPositions(positions)
         this.graphCanvas?.setData(this.currentGraphData)
+        // Values of the "color by" property may have changed
+        this.updateLegend()
 
         // Update stats
         const stats = this.computeStats()

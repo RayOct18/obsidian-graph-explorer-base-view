@@ -10,6 +10,7 @@ import type {
     MaturityLevel
 } from '../types/graph-types'
 import { clampNodeSpacing, DISPLAY_SCALE_DEFAULT } from '../types/graph-types'
+import { assignValueColors, hexToRgba, type ValueColorEntry } from '../utils/value-colors'
 import { carryOverPositions } from '../utils/layout-carry-over'
 import type { CameraState } from '../utils/view-state'
 import type { CardSize, ExpandedCards } from '../utils/expanded-cards'
@@ -29,20 +30,6 @@ export interface GraphCanvasCallbacks {
     /** After every rendered frame (used to keep card overlays on their nodes) */
     onFrame?: () => void
 }
-
-/** Categorical color palette for generic property visualization */
-const CATEGORICAL_PALETTE = [
-    'rgba(59, 130, 246, 0.9)',
-    'rgba(34, 197, 94, 0.9)',
-    'rgba(234, 179, 8, 0.9)',
-    'rgba(239, 68, 68, 0.9)',
-    'rgba(168, 85, 247, 0.9)',
-    'rgba(20, 184, 166, 0.9)',
-    'rgba(249, 115, 22, 0.9)',
-    'rgba(236, 72, 153, 0.9)',
-    'rgba(99, 102, 241, 0.9)',
-    'rgba(6, 182, 212, 0.9)'
-]
 
 /**
  * Minimal d3-force shapes for the three forces we configure. force-graph's
@@ -115,6 +102,8 @@ export class GraphCanvas extends Component {
     /** Expanded cards, sized in graph units; other nodes are kept out of them */
     private cardSizes: ExpandedCards = {}
     private propertyColorMap: Map<string, string> = new Map()
+    /** Colors per value of the "color by" property, with counts (for the legend) */
+    private valueColorEntries: ValueColorEntry[] = []
     private sizeMin = 0
     private sizeMax = 1
 
@@ -504,6 +493,11 @@ export class GraphCanvas extends Component {
         if (this.colorByProperty === property) return
         this.colorByProperty = property
         this.rebuildPropertyColorMap(this.nodeList)
+    }
+
+    /** Each value of the "color by" property with its color and note count (generic properties only) */
+    getValueColorEntries(): ValueColorEntry[] {
+        return this.valueColorEntries
     }
 
     setSizeBy(property: string): void {
@@ -1152,6 +1146,7 @@ export class GraphCanvas extends Component {
 
     private rebuildPropertyColorMap(nodes: GraphNode[]): void {
         this.propertyColorMap.clear()
+        this.valueColorEntries = []
         // Only needed for generic/palette-based properties
         if (
             this.colorByProperty === 'explored' ||
@@ -1162,20 +1157,15 @@ export class GraphCanvas extends Component {
             return
         }
 
-        const values = new Set<string>()
+        const values: string[] = []
         for (const node of nodes) {
             if (node.external || node.frontier) continue
             const val = this.getPropertyValue(node, this.colorByProperty)
-            if (val != null) values.add(val)
+            if (val != null) values.push(val)
         }
-
-        let i = 0
-        for (const val of values) {
-            const paletteColor = CATEGORICAL_PALETTE[i % CATEGORICAL_PALETTE.length]
-            if (paletteColor) {
-                this.propertyColorMap.set(val, paletteColor)
-            }
-            i++
+        this.valueColorEntries = assignValueColors(values)
+        for (const entry of this.valueColorEntries) {
+            this.propertyColorMap.set(entry.value, hexToRgba(entry.color))
         }
     }
 

@@ -5,6 +5,8 @@ export interface LegendEntry {
     label: string
     /** 'swatch' = filled circle (default), 'ring' = hollow ring, 'dot' = small dot */
     style?: 'swatch' | 'ring' | 'dot'
+    /** Shown after the label, e.g. a note count */
+    detail?: string
 }
 
 export interface LegendSection {
@@ -62,6 +64,9 @@ export class GraphLegend extends Component {
                     indicator.style.backgroundColor = entry.color
                 }
                 row.createSpan({ text: entry.label, cls: 'ge-legend__label' })
+                if (entry.detail) {
+                    row.createSpan({ text: entry.detail, cls: 'ge-legend__detail' })
+                }
             }
         }
     }

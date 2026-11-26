@@ -104,6 +104,7 @@ The vertical button stack on the right provides:
 Below the zoom controls, a **legend toggle button** (◣) shows/hides the color legend. The legend displays:
 
 - **Color section** — what the node fill color means in the current color-by mode
+    - When coloring by another property (for example `status`), it lists every value with its color and note count. Colors follow the sorted values, so they do not change when notes are added or removed
 - **Node style section** — green border = explored, hollow = unexplored, purple dot = graduated notes
 
 ## Node visualization

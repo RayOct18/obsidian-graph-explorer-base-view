@@ -937,6 +937,11 @@ body.ge-card-dragging * {
     color: var(--text-normal);
 }
 
+.ge-legend__detail {
+    @apply text-xs;
+    color: var(--text-faint);
+}
+
 /* ========================================
    CONTEXT MENU
    ======================================== */
