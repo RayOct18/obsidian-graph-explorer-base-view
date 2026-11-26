@@ -421,7 +421,11 @@ body.ge-resizing-row {
 }
 
 .ge-card__header {
-    @apply flex items-center gap-1 px-2 py-1;
+    @apply flex items-center;
+    /* Header follows the Card text size, so it stays in proportion to the note */
+    font-size: var(--ge-card-font-size, 24px);
+    gap: 0.25em;
+    padding: 0.25em 0.5em;
     cursor: grab;
     user-select: none;
     border-bottom: 1px solid var(--background-modifier-border);
@@ -429,14 +433,18 @@ body.ge-resizing-row {
 }
 
 .ge-card__title {
-    @apply flex-1 text-xs font-medium truncate;
+    @apply flex-1 font-medium truncate;
+    font-size: 1em !important;
     color: var(--text-normal);
 }
 
 .ge-card__btn {
-    @apply text-xs cursor-pointer;
+    @apply cursor-pointer;
     color: var(--text-muted);
-    padding: 2px 4px;
+    font-size: 1em !important;
+    line-height: 1;
+    height: auto;
+    padding: 0.15em 0.3em;
 }
 
 .ge-card__body {
@@ -498,8 +506,8 @@ body.ge-resizing-row {
     @apply absolute;
     right: 0;
     bottom: 0;
-    width: 14px;
-    height: 14px;
+    width: calc(var(--ge-card-font-size, 24px) * 0.75);
+    height: calc(var(--ge-card-font-size, 24px) * 0.75);
     cursor: nwse-resize;
     background: linear-gradient(135deg, transparent 50%, var(--background-modifier-border) 50%);
 }
