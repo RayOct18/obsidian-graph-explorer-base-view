@@ -1,15 +1,10 @@
 {
     "id": "graph-explorer-base-view-fork",
     "name": "Graph Explorer Base View (fork)",
-    "description": "A custom Bases view that renders notes as an interactive force-directed graph with explored/unexplored tracking.",
+    "description": "Fork of Graph Explorer Base View: a custom Bases view that renders notes as an interactive force-directed graph, with editable note cards and a two-note side panel.",
     "version": "2.1.0",
     "minAppVersion": "1.13.0",
     "isDesktopOnly": false,
-    "author": "Sébastien Dubois",
-    "authorUrl": "https://dsebastien.net",
-    "fundingUrl": {
-        "Join Knowii": "https://www.store.dsebastien.net/product/knowii-community/",
-        "GitHub Sponsors": "https://github.com/sponsors/dsebastien",
-        "Buy Me a Coffee": "https://www.buymeacoffee.com/dsebastien"
-    }
+    "author": "Ray Xie (fork of Sébastien Dubois's plugin)",
+    "authorUrl": "https://github.com/RayOct18/obsidian-graph-explorer-base-view"
 }

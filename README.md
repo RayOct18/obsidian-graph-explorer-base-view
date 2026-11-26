@@ -1,4 +1,20 @@
-# Graph Explorer Base View
+# Graph Explorer Base View (fork)
+
+> [!NOTE]
+> This is a personal fork of [dsebastien/obsidian-graph-explorer-base-view](https://github.com/dsebastien/obsidian-graph-explorer-base-view) by Sébastien Dubois, maintained by [Ray Xie](https://github.com/RayOct18). It is not published in Obsidian's community plugins. All credit for the original plugin goes to Sébastien; please report problems with this fork here, not upstream.
+>
+> **Added in this fork**
+>
+> - **Note cards on the graph** — double-click a node to expand it into an editable card that scales with the zoom and pushes other nodes aside. Cards are remembered per view; a **Card** slider sets their text size, and properties start collapsed.
+> - **Click to select, click again for the side panel** — the first click only selects a node; a second click on the selected node opens the side panel. A card's ◨ button moves its note into the side panel.
+> - **Two notes in the side panel** — open a second note below the first to compare and edit both; while the cursor is in the lower note, clicking a node switches the lower note.
+> - **Remembered view state** — camera, selected node, side panel, left panel and slider values are saved per view.
+> - **Legend lists property values** — when coloring by a property such as `status`, the legend shows each value with its color and note count, and colors stay fixed when notes are added or removed.
+> - **Readability** — stronger links, hovering shows only the hovered node's label, and defaults tuned for task graphs (spacing 200, node and text size 60%).
+>
+> **Install (manual):** build with `bun run build` and copy `dist/main.js`, `dist/styles.css` and `manifest.json` into `<Vault>/.obsidian/plugins/graph-explorer-base-view-fork/`. The plugin id differs from the original, so both can be installed side by side.
+>
+> The sections below describe the original plugin; the installation steps there install the original, not this fork.
 
 An Obsidian plugin that adds a **custom Bases view** which renders notes as an interactive force-directed graph — purpose-built for exploring, tracking and growing a knowledge base note by note.
 
@@ -27,7 +43,7 @@ Where Obsidian's built-in graph shows the whole vault, Graph Explorer works on t
 
 ### Side panel
 
-- Click any node to open its rendered content in a resizable right-side panel.
+- Click a node to select it; click the selected node again to open its rendered content in a resizable right-side panel.
 - Header badges surface key metadata (external, frontier, wiki role, confidence, graduated count, tags).
 - Toggle explored and change maturity level directly from the panel.
 - Edit the note in place with Obsidian's own editor (✎ Edit / 👁 Preview toggle).
@@ -121,7 +137,7 @@ Common commands:
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+MIT — see [LICENSE](./LICENSE). The original plugin is © Sébastien Dubois; the changes in this fork are © Ray Xie, under the same license.
 
 <!-- other-plugins:start -->
 
