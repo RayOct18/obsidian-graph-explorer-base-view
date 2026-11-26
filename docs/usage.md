@@ -61,12 +61,15 @@ Double-click a node (or right-click → **Expand as card**) to open the note as 
 - Cards scale with the zoom, like Canvas cards, and follow their node.
 - Other nodes move out of the way of a card.
 - Drag the card header to move it (the node is pinned there); drag the bottom-right corner to resize.
-- **↗** opens the note in a new tab, **✕** collapses the card. Right-click → **Open in new tab** also opens a tab.
+- **◨** moves the note to the side panel (the card collapses), **✕** collapses the card. Right-click → **Open in new tab** opens a tab.
 - Expanded cards and their sizes are remembered per view.
+- The **Card** slider in the left panel sets the text size inside cards (8–40 px, default 24 at zoom 1), saved per view.
 
 ## Side panel
 
 Open it by clicking the selected node again (a separate click, not a double-click) or with right-click → **Open in side panel**. While it is open, clicking another node shows that note; close it with ✕ or by clicking the background. Whether it is open is remembered per view.
+
+To compare two notes, right-click another node → **Open below in side panel**: it opens with its own editor in the lower half of the panel. Drag the bar between them to change the split; ✕ on the lower note closes it. The lower note is remembered with the panel. Clicking a node switches the note that last had the cursor (marked with an accent bar on its header), so click into the lower note first to switch it.
 
 When a node is selected, the right-side panel shows:
 

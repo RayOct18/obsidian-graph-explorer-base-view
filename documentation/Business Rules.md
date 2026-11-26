@@ -40,7 +40,7 @@ When a new business rule is mentioned:
 - Last viewing state is saved per view in the Base config: `camera` (JSON `{k, x, y}`, written 1 s after the last zoom/pan end, only when changed, flushed on unload) and `selectedNode` (path, null when cleared). Saved state (camera, selection, left panel) is read on the first render that has data, not in `onload` (config may not be available yet). On open the camera replaces zoom-to-fit; the selected note is re-selected (neighbors revealed) and its side panel reopened if it still exists in the graph
 - Node layout is not saved (only dragged, pinned nodes keep positions), so a restored camera can frame a re-laid-out graph
 - One button beside the left panel hides/shows the whole panel (controls + minimap); state persisted per view as `leftPanelHidden`
-- Node spacing, node size (`nodeScale`) and text size (`textScale`) sliders are persisted per view in the Base config and restored on open; missing or invalid scale values fall back to 100%, out-of-range ones are clamped to 20–300%
+- Node spacing, node size (`nodeScale`) and text size (`textScale`) sliders are persisted per view in the Base config and restored on open; missing or invalid scale values fall back to 60%, out-of-range ones are clamped to 20–300%
 
 - Node rings must not overlap — each ring type has a distinct radius slot (explored innermost, then confidence, hover glow, selected, focused, batch outermost)
 - Highlight transitions use smooth fade-in/fade-out (exponential convergence) rather than instant opacity changes
@@ -52,6 +52,9 @@ When a new business rule is mentioned:
 - Double-click a node toggles it as an expanded card (right-click → Expand as card / Collapse card does the same). "Open in new tab" moved to the right-click menu only. Frontier nodes cannot expand
 - Cards are HTML overlays (`GraphCardLayer`) above the canvas, repositioned after every frame (`onRenderFramePost`): graph-space rectangle centered on the node → screen via `graph2ScreenCoords`, `scale(zoom)`. Size is in graph units, so cards scale with the zoom
 - Card content is the same markdown embed editor as the side panel; pending edits are flushed before a card is removed
+- Card header ◨ button: flushes the card's edits, collapses the card, selects the note and opens it in the side panel (replaces the earlier ↗ open-in-tab button; new tab stays in the context menu)
+- Properties start collapsed in cards (embed's shared fold state, like Canvas cards: expanding them in one card expands them in all cards); the side panel keeps the note's own fold state
+- Card text size comes from the left panel's Card slider (8–40 px, default 24; cards scale with the zoom, so this is the size at zoom 1), saved per view as `cardFontSize`; applied as `--ge-card-font-size` on the card layer, properties 1 px smaller; `font-size: … !important` is set on every editor level inside the card body (embed, source view, cm-editor, scroller, preview), because the variables alone and a plain `font-size` on the card body did not reach the editor text under the Minimal theme. `--font-text-size` / `--font-adaptive-normal` are overridden too. Tables get 0.875 × the card size the same way (`--table-text-size` is also resolved on body)
 - Other nodes are kept out of cards by the `cardAvoid` d3 force (rectangle + 16 px padding, push along the shorter axis; cards push each other apart; pinned nodes do not move)
 - Header drag moves and pins the node (saved like a node drag); bottom-right handle resizes symmetrically around the node, clamped to 160×100 – 2000×2000
 - Expanded cards are saved per view as `expandedCards` (JSON path → `{w, h}`) and restored with the other view state; a card is hidden while its note is not in the graph and kept in the config
@@ -62,6 +65,9 @@ When a new business rule is mentioned:
 - Clicking a node selects it (highlight, reveal neighbors) but does not open the side panel; while the panel is open it follows the clicked node
 - The panel opens when the already selected node is clicked again (500 ms later, cancelled by a double-click so expanding a card does not also open it), from right-click → Open in side panel (and from navigating links inside the panel); ✕ or a background click closes it and deselects
 - Open/closed is saved per view as `sidePanelOpen`; on reopen the saved selection comes back, with the panel only if it was open
+- Lower note (compare): right-click → Open below in side panel shows a second note with its own editor under the first (`SidePanelCompare`). When the panel is closed, the same entry opens the note as the panel's main note instead. Clicking a node switches the note that last had the cursor (focusin on the upper content or the lower pane; resets to upper when the lower note closes); that note's header gets an accent bar while split
+- A splitter between the notes sets the lower height (min 80 px each side, default half); ✕ on the lower note closes it; closing the panel closes it too. Pending edits are flushed before its editor goes away
+- Saved per view as `sidePanelCompare` (path, empty when none) and restored with the panel
 - Double-click uses the native `dblclick` event (OS double-click speed), not a timer around force-graph clicks: the first click selects, reveals neighbors and re-lays out the graph, which delayed the second click past the old 400 ms window. The node is the one under the first click (it may have moved by the second). A click within 500 ms of a node click is treated as the second half of a double-click: it does not reselect, and on the background it does not deselect
 
 ## Hover Preview
@@ -81,3 +87,7 @@ When a new business rule is mentioned:
 - The panel opens in edit mode by default; edit/preview mode is sticky across node selections until toggled
 - Pending edits are flushed (`save(text, true)`, debounce cancelled) before the editor is unloaded on node switch, close, or view unload — no edits lost to the embed's 2 s save debounce
 - View keyboard shortcuts are ignored when the event target is inside the side panel
+
+## Link Visibility
+
+- Links are drawn stronger than upstream so relations read at a glance: normal 1.2 px at 35% (dark) / 30% (light) opacity, external 0.8 px, highlighted (hovered/selected node) 2.5 px at 85% / 70%, role-colored links 45–50%, frontier dashes 1 px at 40–45%

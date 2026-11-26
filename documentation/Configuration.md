@@ -16,7 +16,7 @@ Plugin settings define defaults for new views. After a view is created, its sett
 | Default explored filter   | string  | `all`             | Default explored filter (all, explored, unexplored)                                   |
 | Default edge source       | string  | `all`             | Which links draw edges in new views (all, frontmatter, body)                          |
 | Default preset            | string  | `""`              | View preset key (empty = custom)                                                      |
-| Default node spacing      | number  | `1500`            | Force repulsion strength in new views (200–5000)                                      |
+| Default node spacing      | number  | `200`             | Force repulsion strength in new views (200–5000)                                      |
 
 ## View Options (per Base instance)
 
@@ -41,9 +41,9 @@ Each view inherits plugin settings as initial defaults, then operates independen
 
 | Control        | Range    | Default | Description                                                           |
 | -------------- | -------- | ------- | --------------------------------------------------------------------- |
-| Spacing slider | 200–5000 | 1500    | Node repulsion distance; persisted to the view's `nodeSpacing` option |
-| Size slider    | 20–300%  | 100%    | Node scale multiplier                                                 |
-| Text slider    | 20–300%  | 100%    | Label scale multiplier                                                |
+| Spacing slider | 200–5000 | 200     | Node repulsion distance; persisted to the view's `nodeSpacing` option |
+| Size slider    | 20–300%  | 60%     | Node scale multiplier                                                 |
+| Text slider    | 20–300%  | 60%     | Label scale multiplier                                                |
 
 ## Persisted View State
 

@@ -20,7 +20,7 @@ Global settings available in **Settings > Community plugins > Graph Explorer Bas
 | Show external by default  | toggle   | `false`           | Whether new views show external (linked but outside Base) nodes                               |
 | Default explored filter   | dropdown | `all`             | Default filter for explored status in new views                                               |
 | Default edge source       | dropdown | `all`             | Which links draw edges in new views (all, frontmatter, body)                                  |
-| Default node spacing      | slider   | `1500`            | Force repulsion strength between nodes in new views (200–5000)                                |
+| Default node spacing      | slider   | `200`             | Force repulsion strength between nodes in new views (200–5000)                                |
 
 ## View options
 
