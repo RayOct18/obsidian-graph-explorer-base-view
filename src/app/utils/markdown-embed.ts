@@ -77,7 +77,8 @@ export function canEmbedEditor(app: App, file: TFile): boolean {
 export function createMarkdownEmbed(
     app: App,
     containerEl: HTMLElement,
-    file: TFile
+    file: TFile,
+    options: { collapseProperties?: boolean } = {}
 ): MarkdownEmbed | null {
     const creator = getMarkdownEmbedCreator(app, file)
     if (!creator) return null
@@ -95,8 +96,9 @@ export function createMarkdownEmbed(
     )
     if (!isMarkdownEmbed(embed)) return null
     embed.editable = true
-    // Show properties expanded unless the note itself has them folded
-    embed.useLocalPropertiesFoldState = true
+    // Local fold state: properties expanded unless the note itself has them folded.
+    // Shared embed state (like Canvas cards): properties start collapsed.
+    embed.useLocalPropertiesFoldState = options.collapseProperties !== true
     return embed
 }
 

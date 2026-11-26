@@ -134,7 +134,7 @@ export class GraphExplorerSettingTab extends PluginSettingTab {
                     },
                     {
                         name: 'Default node spacing',
-                        desc: 'Controls how far apart nodes spread. Higher values = more space between nodes. Can be overridden per view. (200–5000, default 1500)',
+                        desc: 'Controls how far apart nodes spread. Higher values = more space between nodes. Can be overridden per view. (200–5000, default 200)',
                         control: {
                             type: 'slider',
                             key: 'nodeSpacing',

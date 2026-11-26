@@ -43,7 +43,7 @@ export function createDefaultSettings(): PluginSettings {
         defaultExploredFilter: 'all',
         defaultEdgeSource: 'all',
         defaultPreset: '',
-        nodeSpacing: 1500,
+        nodeSpacing: 200,
         maturityPropertyName: 'maturity',
         graduatedNotesPropertyName: 'graduated_notes'
     }

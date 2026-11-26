@@ -31,9 +31,10 @@ export function clampNodeSpacing(spacing: number): number {
 /** Node size and text size sliders, in percent */
 export const DISPLAY_SCALE_MIN = 20
 export const DISPLAY_SCALE_MAX = 300
-export const DISPLAY_SCALE_DEFAULT = 100
+/** Node and label size when a view has none saved (60% keeps labels from crowding) */
+export const DISPLAY_SCALE_DEFAULT = 60
 
-/** Clamps a saved scale; anything that is not a finite number falls back to 100%. */
+/** Clamps a saved scale; anything that is not a finite number falls back to the default. */
 export function clampDisplayScale(scale: unknown): number {
     if (typeof scale !== 'number' || !Number.isFinite(scale)) return DISPLAY_SCALE_DEFAULT
     return Math.max(DISPLAY_SCALE_MIN, Math.min(DISPLAY_SCALE_MAX, scale))

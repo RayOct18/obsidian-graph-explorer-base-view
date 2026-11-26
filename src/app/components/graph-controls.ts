@@ -1,4 +1,11 @@
 import { Component, debounce } from 'obsidian'
+import { DEFAULT_SETTINGS } from '../types/plugin-settings.intf'
+import { DISPLAY_SCALE_DEFAULT } from '../types/graph-types'
+import {
+    CARD_FONT_SIZE_DEFAULT,
+    CARD_FONT_SIZE_MAX,
+    CARD_FONT_SIZE_MIN
+} from '../utils/expanded-cards'
 import type { Debouncer } from 'obsidian'
 import type {
     ExploredFilter,
@@ -16,6 +23,8 @@ export interface GraphControlsCallbacks {
     onNodeSpacingChange: (spacing: number) => void
     onNodeScaleChange: (scale: number) => void
     onTextScaleChange: (scale: number) => void
+    /** Text size inside expanded cards, in px */
+    onCardFontSizeChange: (size: number) => void
 }
 
 /**
@@ -34,6 +43,8 @@ export class GraphControls extends Component {
     private scaleValue: HTMLSpanElement
     private textSlider: HTMLInputElement
     private textValue: HTMLSpanElement
+    private cardFontSlider: HTMLInputElement
+    private cardFontValue: HTMLSpanElement
     private callbacks: GraphControlsCallbacks
     private currentFilter: ExploredFilter = 'all'
     private debouncedSearch: Debouncer<[string], void>
@@ -98,7 +109,7 @@ export class GraphControls extends Component {
                 title: 'Node spacing'
             }
         })
-        this.spacingSlider.value = '1500'
+        this.spacingSlider.value = String(DEFAULT_SETTINGS.nodeSpacing)
 
         // Scale slider
         const scaleRow = slidersSection.createDiv({ cls: 'ge-controls__slider-row' })
@@ -111,7 +122,7 @@ export class GraphControls extends Component {
             cls: 'ge-controls__slider',
             attr: { min: '20', max: '300', step: '10', title: 'Node size' }
         })
-        this.scaleSlider.value = '100'
+        this.scaleSlider.value = String(DISPLAY_SCALE_DEFAULT)
 
         // Text scale slider
         const textRow = slidersSection.createDiv({ cls: 'ge-controls__slider-row' })
@@ -124,7 +135,25 @@ export class GraphControls extends Component {
             cls: 'ge-controls__slider',
             attr: { min: '20', max: '300', step: '10', title: 'Label size' }
         })
-        this.textSlider.value = '100'
+        this.textSlider.value = String(DISPLAY_SCALE_DEFAULT)
+
+        // Card text size slider (px)
+        const cardFontRow = slidersSection.createDiv({ cls: 'ge-controls__slider-row' })
+        cardFontRow.createSpan({ text: 'Card', cls: 'ge-controls__slider-label' })
+        this.cardFontValue = cardFontRow.createSpan({
+            cls: 'ge-controls__slider-value ge-controls__slider-value--hidden'
+        })
+        this.cardFontSlider = cardFontRow.createEl('input', {
+            type: 'range',
+            cls: 'ge-controls__slider',
+            attr: {
+                min: String(CARD_FONT_SIZE_MIN),
+                max: String(CARD_FONT_SIZE_MAX),
+                step: '1',
+                title: 'Card text size'
+            }
+        })
+        this.cardFontSlider.value = String(CARD_FONT_SIZE_DEFAULT)
 
         // Explored filter
         const filterSection = this.bodyEl.createDiv({ cls: 'ge-controls__filter' })
@@ -225,6 +254,19 @@ export class GraphControls extends Component {
         this.registerDomEvent(this.textSlider, 'change', () => {
             window.setTimeout(() => {
                 this.textValue.addClass('ge-controls__slider-value--hidden')
+            }, 800)
+        })
+
+        // Card text slider — show value while dragging
+        this.registerDomEvent(this.cardFontSlider, 'input', () => {
+            const val = parseInt(this.cardFontSlider.value, 10)
+            this.cardFontValue.textContent = `${val}px`
+            this.cardFontValue.removeClass('ge-controls__slider-value--hidden')
+            this.callbacks.onCardFontSizeChange(val)
+        })
+        this.registerDomEvent(this.cardFontSlider, 'change', () => {
+            window.setTimeout(() => {
+                this.cardFontValue.addClass('ge-controls__slider-value--hidden')
             }, 800)
         })
     }
@@ -347,6 +389,10 @@ export class GraphControls extends Component {
 
     setTextScaleValue(value: number): void {
         this.textSlider.value = String(value)
+    }
+
+    setCardFontSizeValue(value: number): void {
+        this.cardFontSlider.value = String(value)
     }
 
     setBatchSelectionCount(count: number): void {

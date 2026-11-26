@@ -6,6 +6,7 @@ import { GraphCanvas } from '../../components/graph-canvas'
 import { GraphSidePanel } from '../../components/graph-side-panel'
 import { GraphCardLayer } from '../../components/graph-card-layer'
 import {
+    clampCardFontSize,
     DEFAULT_CARD_SIZE,
     parseExpandedCards,
     serializeExpandedCards,
@@ -175,7 +176,7 @@ export class GraphExplorerView extends BasesView implements HoverParent {
             onMoveEnd: (id, x, y) => this.handleNodeDragEnd(id, x, y),
             onResizeEnd: (id, size) => this.setCard(id, size),
             onClose: (id) => this.setCard(id, null),
-            onOpenInTab: (id) => this.openInTab(id)
+            onOpenInPanel: (id) => void this.moveCardToSidePanel(id)
         })
         this.addChild(this.cardLayer)
 
@@ -225,6 +226,10 @@ export class GraphExplorerView extends BasesView implements HoverParent {
             onTextScaleChange: (scale) => {
                 this.graphCanvas?.setTextScale(scale)
                 this.config?.set('textScale', clampDisplayScale(scale))
+            },
+            onCardFontSizeChange: (size) => {
+                this.cardLayer?.setFontSize(size)
+                this.config?.set('cardFontSize', clampCardFontSize(size))
             }
         })
         this.addChild(this.controls)
@@ -276,7 +281,8 @@ export class GraphExplorerView extends BasesView implements HoverParent {
             onToggleExplored: (node) => void this.handleToggleExplored(node),
             onSetMaturity: (node, maturity) => void this.handleSetMaturity(node, maturity),
             onClose: () => this.handleBackgroundClick(),
-            onNavigateToNode: (nodeId) => this.handleNavigateToNode(nodeId)
+            onNavigateToNode: (nodeId) => this.handleNavigateToNode(nodeId),
+            onCompareClose: () => this.saveComparePath(null)
         })
         this.addChild(this.sidePanel)
 
@@ -337,7 +343,34 @@ export class GraphExplorerView extends BasesView implements HoverParent {
             return
         }
         this.graphCanvas?.setSelectedNode(node.id)
-        if (this.config?.get('sidePanelOpen') === true) void this.sidePanel?.showNode(node)
+        if (this.config?.get('sidePanelOpen') !== true) return
+        void this.sidePanel?.showNode(node)
+        const comparePath = this.config.get('sidePanelCompare')
+        const compareFile =
+            typeof comparePath === 'string'
+                ? this.app.vault.getAbstractFileByPath(comparePath)
+                : null
+        if (compareFile instanceof TFile) void this.sidePanel?.showCompare(compareFile)
+    }
+
+    /** Opens a note below the side panel's note; opens the panel first when it is closed. */
+    private openInLowerPanel(node: GraphNode): void {
+        if (!this.sidePanel?.isVisible()) {
+            this.selectNode(node.id)
+            this.openSidePanel(node)
+            return
+        }
+        const file = this.app.vault.getAbstractFileByPath(node.id)
+        if (!(file instanceof TFile)) return
+        void this.sidePanel.showCompare(file)
+        this.saveComparePath(file.path)
+    }
+
+    private saveComparePath(path: string | null): void {
+        const value = path ?? ''
+        if ((this.config?.get('sidePanelCompare') ?? '') !== value) {
+            this.config?.set('sidePanelCompare', value)
+        }
     }
 
     /** Opens the side panel on a note and remembers that it is open. */
@@ -348,6 +381,7 @@ export class GraphExplorerView extends BasesView implements HoverParent {
 
     private closeSidePanel(): void {
         this.sidePanel?.hide()
+        this.saveComparePath(null)
         if (this.config?.get('sidePanelOpen') === true) this.config?.set('sidePanelOpen', false)
     }
 
@@ -391,6 +425,9 @@ export class GraphExplorerView extends BasesView implements HoverParent {
         this.graphCanvas?.setTextScale(textScale)
         this.controls?.setScaleValue(nodeScale)
         this.controls?.setTextScaleValue(textScale)
+        const cardFontSize = clampCardFontSize(this.config?.get('cardFontSize'))
+        this.cardLayer?.setFontSize(cardFontSize)
+        this.controls?.setCardFontSizeValue(cardFontSize)
         this.legend?.update(this.getLegendConfig(colorBy))
 
         // Handle preset changes
@@ -638,7 +675,14 @@ export class GraphExplorerView extends BasesView implements HoverParent {
         const wasSelected = this.selectedNodeId === node.id
         this.selectNode(node.id)
         if (this.sidePanel?.isVisible()) {
-            void this.sidePanel.showNode(node)
+            // The note that last had the cursor follows the click
+            const file = node.frontier ? null : this.app.vault.getAbstractFileByPath(node.id)
+            if (this.sidePanel.isLowerActive() && file instanceof TFile) {
+                void this.sidePanel.showCompare(file)
+                this.saveComparePath(file.path)
+            } else {
+                void this.sidePanel.showNode(node)
+            }
         } else if (wasSelected) {
             this.pendingPanelOpen = window.setTimeout(() => {
                 this.pendingPanelOpen = null
@@ -706,6 +750,18 @@ export class GraphExplorerView extends BasesView implements HoverParent {
         this.cancelPendingPanelOpen()
         if (node.frontier) return
         this.setCard(node.id, node.id in this.expandedCards ? null : DEFAULT_CARD_SIZE)
+    }
+
+    /** Card header button: show the note in the side panel and collapse its card. */
+    private async moveCardToSidePanel(path: string): Promise<void> {
+        const node = this.graphCanvas?.getNode(path)
+        if (!node) return
+        // Save the card's edits first so the panel's editor loads them
+        await this.cardLayer?.flushCard(path)
+        this.setCard(path, null)
+        this.cancelPendingPanelOpen()
+        this.selectNode(node.id)
+        this.openSidePanel(node)
     }
 
     private openInTab(path: string): void {
@@ -798,6 +854,11 @@ export class GraphExplorerView extends BasesView implements HoverParent {
         })
 
         if (!node.frontier) {
+            actions.push({
+                label: 'Open below in side panel',
+                icon: '\u2B13',
+                callback: () => this.openInLowerPanel(node)
+            })
             actions.push({
                 label: 'Open in new tab',
                 icon: '\u2197',

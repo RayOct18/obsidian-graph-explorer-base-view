@@ -1,5 +1,9 @@
 import { describe, test, expect } from 'bun:test'
 import {
+    CARD_FONT_SIZE_DEFAULT,
+    CARD_FONT_SIZE_MAX,
+    CARD_FONT_SIZE_MIN,
+    clampCardFontSize,
     clampCardSize,
     DEFAULT_CARD_SIZE,
     MAX_CARD_SIZE,
@@ -45,5 +49,22 @@ describe('parseExpandedCards', () => {
         expect(parseExpandedCards(raw)).toEqual({
             'ok.md': { w: MIN_CARD_SIZE.w, h: MAX_CARD_SIZE.h }
         })
+    })
+})
+
+describe('clampCardFontSize', () => {
+    test('keeps sizes in range and rounds them', () => {
+        expect(clampCardFontSize(13.4)).toBe(13)
+    })
+
+    test('clamps to the min and max', () => {
+        expect(clampCardFontSize(1)).toBe(CARD_FONT_SIZE_MIN)
+        expect(clampCardFontSize(100)).toBe(CARD_FONT_SIZE_MAX)
+    })
+
+    test('falls back to the default for missing or invalid values', () => {
+        expect(clampCardFontSize(undefined)).toBe(CARD_FONT_SIZE_DEFAULT)
+        expect(clampCardFontSize('14')).toBe(CARD_FONT_SIZE_DEFAULT)
+        expect(clampCardFontSize(Number.NaN)).toBe(CARD_FONT_SIZE_DEFAULT)
     })
 })

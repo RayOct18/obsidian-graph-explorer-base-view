@@ -1,4 +1,5 @@
 import { Component, MarkdownRenderer, TFile } from 'obsidian'
+import { SidePanelCompare } from './side-panel-compare'
 import type { App, MarkdownFileInfo } from 'obsidian'
 import type { GraphNode, MaturityLevel } from '../types/graph-types'
 import {
@@ -16,6 +17,8 @@ export interface GraphSidePanelCallbacks {
     onSetMaturity: (node: GraphNode, maturity: MaturityLevel) => void
     onClose: () => void
     onNavigateToNode: (nodeId: string) => void
+    /** The lower note was closed with its ✕ */
+    onCompareClose?: () => void
 }
 
 /**
@@ -36,6 +39,10 @@ export class GraphSidePanel extends Component {
     private embed: MarkdownEmbed | null = null
     /** Incremented on every showNode/hide so stale async renders bail out. */
     private renderToken = 0
+    /** Second note below the first, for comparing and editing both */
+    private compare: SidePanelCompare
+    /** Whether the cursor was last in the lower note */
+    private lowerActive = false
 
     constructor(containerEl: HTMLElement, app: App, callbacks: GraphSidePanelCallbacks) {
         super()
@@ -50,6 +57,45 @@ export class GraphSidePanel extends Component {
 
         this.headerEl = this.panelEl.createDiv({ cls: 'ge-side-panel__header' })
         this.contentEl = this.panelEl.createDiv({ cls: 'ge-side-panel__content' })
+        this.compare = new SidePanelCompare(
+            this.panelEl,
+            this.app,
+            () => {
+                void this.compare.close()
+                this.setLowerActive(false)
+                this.callbacks.onCompareClose?.()
+            },
+            () => this.setLowerActive(true)
+        )
+        this.addChild(this.compare)
+        this.registerDomEvent(this.contentEl, 'focusin', () => this.setLowerActive(false))
+    }
+
+    /**
+     * True when the cursor was last in the lower note: clicking a node then
+     * switches the lower note instead of the upper one.
+     */
+    isLowerActive(): boolean {
+        return this.lowerActive && this.compare.isOpen()
+    }
+
+    private setLowerActive(active: boolean): void {
+        this.lowerActive = active
+        this.panelEl.toggleClass('ge-side-panel--lower-active', active)
+    }
+
+    /** Opens `file` in the lower half of the panel (the panel must be open). */
+    async showCompare(file: TFile): Promise<void> {
+        await this.compare.show(file)
+    }
+
+    async closeCompare(): Promise<void> {
+        this.setLowerActive(false)
+        await this.compare.close()
+    }
+
+    getComparePath(): string | null {
+        return this.compare.getPath()
     }
 
     override onunload(): void {
@@ -92,6 +138,8 @@ export class GraphSidePanel extends Component {
 
     hide(): void {
         this.renderToken++
+        void this.compare.close()
+        this.setLowerActive(false)
         this.panelEl.addClass('ge-side-panel--hidden')
         this.currentNode = null
         void this.disposeEditor()

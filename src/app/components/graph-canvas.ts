@@ -1,4 +1,5 @@
 import { Component } from 'obsidian'
+import { DEFAULT_SETTINGS } from '../types/plugin-settings.intf'
 import ForceGraph from 'force-graph'
 import type {
     GraphData,
@@ -8,7 +9,7 @@ import type {
     WikiRole,
     MaturityLevel
 } from '../types/graph-types'
-import { clampNodeSpacing } from '../types/graph-types'
+import { clampNodeSpacing, DISPLAY_SCALE_DEFAULT } from '../types/graph-types'
 import { carryOverPositions } from '../utils/layout-carry-over'
 import type { CameraState } from '../utils/view-state'
 import type { CardSize, ExpandedCards } from '../utils/expanded-cards'
@@ -103,9 +104,9 @@ export class GraphCanvas extends Component {
     // Visualization config
     private colorByProperty = 'explored'
     private sizeByProperty = 'connections'
-    private nodeSpacing = 1500
-    private nodeScale = 100
-    private textScale = 100
+    private nodeSpacing = DEFAULT_SETTINGS.nodeSpacing
+    private nodeScale = DISPLAY_SCALE_DEFAULT
+    private textScale = DISPLAY_SCALE_DEFAULT
     private initialZoomDone = false
     /** Camera to restore on first load instead of zoom-to-fit */
     private initialCamera: CameraState | null = null
@@ -888,17 +889,17 @@ export class GraphCanvas extends Component {
         if (link.toFrontier) {
             const dashLen = 4 / (this.graph?.zoom() ?? 1)
             ctx.setLineDash([dashLen, dashLen])
-            ctx.strokeStyle = this.isDark ? 'rgba(239, 68, 68, 0.25)' : 'rgba(220, 38, 38, 0.2)'
-            ctx.lineWidth = isHighlightedEdge ? 1.5 : 0.5
+            ctx.strokeStyle = this.isDark ? 'rgba(239, 68, 68, 0.45)' : 'rgba(220, 38, 38, 0.4)'
+            ctx.lineWidth = isHighlightedEdge ? 2 : 1
         } else if (isHighlightedEdge) {
             ctx.setLineDash([])
-            ctx.strokeStyle = this.isDark ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.35)'
-            ctx.lineWidth = 1.5
+            ctx.strokeStyle = this.isDark ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.7)'
+            ctx.lineWidth = 2.5
         } else {
             ctx.setLineDash([])
             const isExternal = sourceNode?.external || targetNode?.external
             ctx.strokeStyle = this.getLinkColorByRole(link.sourceRole)
-            ctx.lineWidth = isExternal ? 0.3 : 0.5
+            ctx.lineWidth = isExternal ? 0.8 : 1.2
         }
 
         ctx.stroke()
@@ -1101,11 +1102,11 @@ export class GraphCanvas extends Component {
         const isDark = this.isDark
         switch (role) {
             case 'index':
-                return isDark ? 'rgba(168, 85, 247, 0.15)' : 'rgba(147, 51, 234, 0.12)'
+                return isDark ? 'rgba(168, 85, 247, 0.5)' : 'rgba(147, 51, 234, 0.45)'
             case 'source_summary':
-                return isDark ? 'rgba(234, 179, 8, 0.15)' : 'rgba(202, 138, 4, 0.12)'
+                return isDark ? 'rgba(234, 179, 8, 0.5)' : 'rgba(202, 138, 4, 0.45)'
             default:
-                return isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)'
+                return isDark ? 'rgba(255, 255, 255, 0.35)' : 'rgba(0, 0, 0, 0.3)'
         }
     }
 

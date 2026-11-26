@@ -81,6 +81,68 @@
     @apply hidden;
 }
 
+/* Lower note (compare): splitter + second editor below the first note */
+/* Two classes: must beat .ge-side-panel__compare's display: flex below */
+.ge-side-panel .ge-compare--hidden {
+    @apply hidden;
+}
+
+.ge-side-panel--split .ge-side-panel__content {
+    flex: 1 1 0;
+}
+
+.ge-side-panel__splitter {
+    @apply flex-shrink-0;
+    height: 5px;
+    cursor: row-resize;
+    border-top: 1px solid var(--background-modifier-border);
+    background-color: var(--background-secondary);
+}
+
+.ge-side-panel__splitter:hover {
+    background-color: var(--interactive-accent);
+}
+
+.ge-side-panel__compare {
+    @apply flex flex-col;
+    flex: 0 0 50%;
+    min-height: 0;
+}
+
+.ge-side-panel__compare-header {
+    @apply flex items-center gap-2 flex-shrink-0 px-4 py-1;
+    border-bottom: 1px solid var(--background-modifier-border);
+    background-color: var(--background-secondary);
+}
+
+/* Mark the note that follows node clicks (the one that last had the cursor) */
+.ge-side-panel--split .ge-side-panel__header,
+.ge-side-panel--split .ge-side-panel__compare-header {
+    box-shadow: inset 3px 0 0 transparent;
+}
+
+.ge-side-panel--split:not(.ge-side-panel--lower-active) .ge-side-panel__header,
+.ge-side-panel--split.ge-side-panel--lower-active .ge-side-panel__compare-header {
+    box-shadow: inset 3px 0 0 var(--interactive-accent);
+}
+
+.ge-side-panel__compare-title {
+    @apply flex-1 text-sm font-medium truncate;
+    color: var(--text-normal);
+}
+
+.ge-side-panel__compare-body {
+    @apply flex-1 px-4 py-3;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+}
+
+body.ge-resizing-row {
+    cursor: row-resize;
+    user-select: none;
+}
+
 .ge-side-panel__resize-handle {
     @apply absolute;
     left: -3px;
@@ -386,6 +448,46 @@
     border: none;
     padding: 0 8px;
     margin: 0;
+}
+
+/* Smaller text than a note tab so more of the note fits in a card */
+.ge-card__body {
+    --font-text-size: var(--ge-card-font-size, 24px);
+    /* Minimal theme sizes the editor from this one, resolved on body */
+    --font-adaptive-normal: var(--ge-card-font-size, 24px);
+    --metadata-label-font-size: calc(var(--ge-card-font-size, 24px) - 1px);
+    --metadata-input-font-size: calc(var(--ge-card-font-size, 24px) - 1px);
+    --line-height-normal: 1.45;
+}
+
+/* Card text size: set on every level the editor or a theme may size, so
+   nothing re-applies the note size (the variables alone did not reach it) */
+.ge-card__body,
+.ge-card__body .markdown-embed,
+.ge-card__body .markdown-embed-content,
+.ge-card__body .markdown-source-view,
+.ge-card__body .cm-editor,
+.ge-card__body .cm-scroller,
+.ge-card__body .markdown-preview-view,
+.ge-card__body .markdown-rendered {
+    font-size: var(--ge-card-font-size, 24px) !important;
+}
+
+/* Tables: themes size them from --table-text-size, also resolved on body */
+.ge-card__body {
+    --table-text-size: calc(var(--ge-card-font-size, 24px) * 0.875);
+}
+
+.ge-card__body table,
+.ge-card__body th,
+.ge-card__body td {
+    font-size: calc(var(--ge-card-font-size, 24px) * 0.875) !important;
+}
+
+.ge-card__body .markdown-source-view.mod-cm6 .cm-scroller,
+.ge-card__body .markdown-preview-view {
+    padding-top: 4px;
+    padding-bottom: 4px;
 }
 
 .ge-card__editor .markdown-embed-content {

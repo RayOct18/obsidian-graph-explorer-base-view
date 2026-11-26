@@ -20,7 +20,8 @@ export interface GraphCardLayerCallbacks {
     onMoveEnd: (id: string, x: number, y: number) => void
     onResizeEnd: (id: string, size: CardSize) => void
     onClose: (id: string) => void
-    onOpenInTab: (id: string) => void
+    /** Show the note in the side panel instead of the card */
+    onOpenInPanel: (id: string) => void
 }
 
 interface CardEntry {
@@ -71,6 +72,22 @@ export class GraphCardLayer extends Component {
         this.position()
     }
 
+    /** Text size inside every card, in px */
+    setFontSize(px: number): void {
+        this.layerEl.style.setProperty('--ge-card-font-size', `${px}px`)
+    }
+
+    /** Writes a card's pending edits now (before another editor opens the same note). */
+    async flushCard(id: string): Promise<void> {
+        const embed = this.cards.get(id)?.embed
+        if (!embed) return
+        try {
+            await flushMarkdownEmbed(embed)
+        } catch (error) {
+            log('Failed to save card edits', 'error', error)
+        }
+    }
+
     hasCards(): boolean {
         return this.cards.size > 0
     }
@@ -106,22 +123,26 @@ export class GraphCardLayer extends Component {
         const header = el.createDiv({ cls: 'ge-card__header' })
         header.createSpan({ text: file.basename, cls: 'ge-card__title' })
         const openBtn = header.createEl('button', {
-            text: '↗',
+            text: '\u25E8',
             cls: 'ge-card__btn clickable-icon',
-            attr: { 'aria-label': 'Open in new tab', 'title': 'Open in new tab' }
+            attr: {
+                'aria-label': 'Open in side panel (collapses the card)',
+                'title': 'Open in side panel (collapses the card)'
+            }
         })
         const closeBtn = header.createEl('button', {
             text: '✕',
             cls: 'ge-card__btn clickable-icon',
             attr: { 'aria-label': 'Collapse card', 'title': 'Collapse card' }
         })
-        this.registerDomEvent(openBtn, 'click', () => this.callbacks.onOpenInTab(id))
+        this.registerDomEvent(openBtn, 'click', () => this.callbacks.onOpenInPanel(id))
         this.registerDomEvent(closeBtn, 'click', () => this.callbacks.onClose(id))
         this.setupDrag(entry, header)
 
         const body = el.createDiv({ cls: 'ge-card__body' })
         const holder = body.createDiv({ cls: 'ge-card__editor markdown-embed' })
-        const embed = createMarkdownEmbed(this.app, holder, file)
+        // Properties start collapsed in cards, to keep them small
+        const embed = createMarkdownEmbed(this.app, holder, file, { collapseProperties: true })
         if (embed) {
             entry.embed = embed
             this.addChild(embed)

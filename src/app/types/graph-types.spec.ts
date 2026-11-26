@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import {
+    DISPLAY_SCALE_DEFAULT,
     DISPLAY_SCALE_MAX,
     DISPLAY_SCALE_MIN,
     NODE_SPACING_MAX,
@@ -15,10 +16,10 @@ describe('clampDisplayScale', () => {
         expect(clampDisplayScale(999)).toBe(DISPLAY_SCALE_MAX)
     })
 
-    test('falls back to 100% when nothing usable is saved', () => {
-        expect(clampDisplayScale(undefined)).toBe(100)
-        expect(clampDisplayScale('150')).toBe(100)
-        expect(clampDisplayScale(Number.NaN)).toBe(100)
+    test('falls back to the default when nothing usable is saved', () => {
+        expect(clampDisplayScale(undefined)).toBe(DISPLAY_SCALE_DEFAULT)
+        expect(clampDisplayScale('150')).toBe(DISPLAY_SCALE_DEFAULT)
+        expect(clampDisplayScale(Number.NaN)).toBe(DISPLAY_SCALE_DEFAULT)
     })
 })
 
